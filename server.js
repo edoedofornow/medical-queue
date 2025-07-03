@@ -141,22 +141,31 @@ app.post('/api/update/:id', (req, res) => {
     return res.status(404).json({ error: 'Patient not found' });
   }
 
-  queue[index] = {
+  const updatedPatient = {
     ...queue[index],
     name: name || queue[index].name,
     priority: priority || queue[index].priority,
-    notes: notes || queue[index].notes,
-    patientNumber: patientNumber || queue[index].patientNumber
+    notes: notes || queue[index].notes
   };
-
-  sortQueue();
   
-  if (calledPatientId === id) {
-    calledPatientId = queue[index].id;
+  queue.splice(index, 1); // Remove the patient
+  
+  let newIndex = queue.length; // Default to end
+  if (!isNaN(patientNumber) && patientNumber > 0 && patientNumber <= queue.length + 1) {
+    newIndex = patientNumber - 1;
   }
   
-  res.json(queue[index]);
-});
+  queue.splice(newIndex, 0, updatedPatient); // Insert at new position
+  
+  // Recalculate patient numbers
+  queue.forEach((p, i) => p.patientNumber = i + 1);
+  
+  // Update currentPosition if needed
+  if (calledPatientId === id) {
+    currentPosition = queue.findIndex(p => p.id === calledPatientId);
+  }
+  
+  res.json(updatedPatient);  
 
 app.delete('/api/remove/:id', (req, res) => {
   const { id } = req.params;
@@ -189,7 +198,7 @@ app.post('/api/clear', (req, res) => {
 
 app.post('/api/reorder', (req, res) => {
   const { patientId, newPosition } = req.body;
-  
+
   if (!patientId || newPosition === undefined || newPosition < 0 || newPosition >= queue.length) {
     return res.status(400).json({ error: 'Invalid reorder request' });
   }
@@ -205,20 +214,18 @@ app.post('/api/reorder', (req, res) => {
 
   const [patient] = queue.splice(oldIndex, 1);
   queue.splice(newPosition, 0, patient);
-  
-  // Update currentPosition if needed
-  if (oldIndex === currentPosition) {
-    currentPosition = newPosition;
-  } else if (oldIndex < currentPosition && newPosition >= currentPosition) {
+
+  // Recalculate patient numbers
+  queue.forEach((p, i) => p.patientNumber = i + 1);
+
+  // Recalculate currentPosition if needed
+  if (oldIndex < currentPosition && newPosition >= currentPosition) {
     currentPosition--;
   } else if (oldIndex > currentPosition && newPosition <= currentPosition) {
     currentPosition++;
+  } else if (oldIndex === currentPosition) {
+    currentPosition = newPosition;
   }
-
-  // Reassign patient numbers based on new order
-  queue.forEach((patient, index) => {
-    patient.patientNumber = index + 1;
-  });
 
   res.json({
     success: true,

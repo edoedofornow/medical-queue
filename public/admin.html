@@ -953,7 +953,9 @@
                 
                 if (patient.id === currentState.calledPatientId) {
                     queueItem.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
-                }
+                    queueItem.draggable = false;
+                    queueItem.style.cursor = 'not-allowed';
+                  }                  
 
                 const priorityClass = patient.priority === 'elderly' ? '' : `priority-${patient.priority}`;
                 const priorityText = patient.priority === 'elderly' ? '' : patient.priority.toUpperCase();
