@@ -1,13 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const DATA_PATH = path.join(__dirname, 'data.json');
-
-// CORS
+// CORS Configuration
 app.use(cors({
   origin: ['https://medical-queue.onrender.com', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE']
@@ -16,46 +13,17 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Default State
+// Queue State
 let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-let historyStack = [];
+let historyStack = []; // NEW
+
 const clinicName = "Dr Maher Mahmoud Clinics";
 const MAX_COMPLETED_PATIENTS = 2000;
 
-// Load data on startup
-function loadData() {
-  if (fs.existsSync(DATA_PATH)) {
-    try {
-      const raw = fs.readFileSync(DATA_PATH);
-      const data = JSON.parse(raw);
-      queue = data.queue || [];
-      completedPatients = data.completedPatients || [];
-      currentPosition = data.currentPosition || 0;
-      calledPatientId = data.calledPatientId || null;
-      historyStack = data.historyStack || [];
-    } catch (e) {
-      console.error("Error loading saved data:", e);
-    }
-  }
-}
-
-// Save data after any change
-function saveData() {
-  const data = {
-    queue,
-    completedPatients,
-    currentPosition,
-    calledPatientId,
-    historyStack
-  };
-  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
-}
-
-loadData();
-
+// Helper Functions
 const sortQueue = () => {
   const priorityValues = { emergency: 4, priority: 3, elderly: 2, normal: 1 };
   queue.sort((a, b) => {
@@ -73,18 +41,17 @@ const addToCompleted = (patient, status = 'completed') => {
     timestamp: patient.timestamp,
     completedAt: new Date().toISOString(),
     patientNumber: patient.patientNumber,
-    status
+    status: status
   };
 
   completedPatients.unshift(completedPatient);
+
   if (completedPatients.length > MAX_COMPLETED_PATIENTS) {
     completedPatients.pop();
   }
-
-  saveData();
 };
 
-// API Routes
+// API Endpoints
 app.get('/api/queue', (req, res) => {
   sortQueue();
   res.json({
@@ -120,8 +87,6 @@ app.post('/api/add', (req, res) => {
 
   queue.push(newPatient);
   sortQueue();
-  saveData();
-
   res.status(201).json(newPatient);
 });
 
@@ -132,8 +97,6 @@ app.post('/api/call', (req, res) => {
 
   calledPatientId = queue[currentPosition].id;
   queue[currentPosition].status = 'serving';
-  saveData();
-
   res.json({ calledPatientId });
 });
 
@@ -144,6 +107,7 @@ app.post('/api/next', (req, res) => {
 
   const currentPatient = queue[currentPosition];
 
+  // Track history for "Previous" support
   historyStack.push({ ...currentPatient });
 
   if (calledPatientId) {
@@ -159,8 +123,6 @@ app.post('/api/next', (req, res) => {
     currentPosition = 0;
   }
 
-  saveData();
-
   res.json({
     currentPosition,
     queue,
@@ -175,19 +137,23 @@ app.post('/api/previous', (req, res) => {
 
   const lastPatient = historyStack.pop();
 
+  // Prevent duplicates in queue
   if (queue.find(p => p.id === lastPatient.id)) {
     return res.status(400).json({ error: 'Patient already in queue' });
   }
 
+  // Restore to current position
   queue.splice(currentPosition, 0, lastPatient);
   queue[currentPosition].status = 'serving';
   calledPatientId = lastPatient.id;
 
+  // Reassign patient numbers
   queue.forEach((p, i) => p.patientNumber = i + 1);
 
-  saveData();
-
-  res.json({ currentPosition, queue });
+  res.json({
+    currentPosition,
+    queue
+  });
 });
 
 app.post('/api/update/:id', (req, res) => {
@@ -206,21 +172,20 @@ app.post('/api/update/:id', (req, res) => {
     notes: notes || queue[index].notes
   };
 
-  queue.splice(index, 1);
+  queue.splice(index, 1); // Remove patient
 
-  let newIndex = queue.length;
+  let newIndex = queue.length; // default to end
   if (!isNaN(patientNumber) && patientNumber > 0 && patientNumber <= queue.length + 1) {
     newIndex = patientNumber - 1;
   }
 
   queue.splice(newIndex, 0, updatedPatient);
+
   queue.forEach((p, i) => p.patientNumber = i + 1);
 
   if (calledPatientId === id) {
     currentPosition = queue.findIndex(p => p.id === calledPatientId);
   }
-
-  saveData();
 
   res.json(updatedPatient);
 });
@@ -243,21 +208,23 @@ app.delete('/api/remove/:id', (req, res) => {
     calledPatientId = null;
   }
 
-  saveData();
-
   res.json(removedPatient);
 });
 
 app.post('/api/clear', (req, res) => {
-  queue = [];
+  queue = [];app.post('/api/clear', (req, res) => {
+    queue = [];
+    currentPosition = 0;
+    calledPatientId = null;
+    historyStack = [];
+    res.json({ message: 'Queue cleared, completed patients preserved' });
+  });
+  
   completedPatients = [];
   currentPosition = 0;
   calledPatientId = null;
-  historyStack = [];
-
-  saveData();
-
-  res.json({ message: 'Queue and completed patients cleared' });
+  historyStack = []; // clear this too
+  res.json({ message: 'Queue cleared' });
 });
 
 app.post('/api/reorder', (req, res) => {
@@ -278,6 +245,7 @@ app.post('/api/reorder', (req, res) => {
 
   const [patient] = queue.splice(oldIndex, 1);
   queue.splice(newPosition, 0, patient);
+
   queue.forEach((p, i) => p.patientNumber = i + 1);
 
   if (oldIndex < currentPosition && newPosition >= currentPosition) {
@@ -288,9 +256,12 @@ app.post('/api/reorder', (req, res) => {
     currentPosition = newPosition;
   }
 
-  saveData();
-
-  res.json({ success: true, queue, currentPosition, calledPatientId });
+  res.json({
+    success: true,
+    queue,
+    currentPosition,
+    calledPatientId
+  });
 });
 
 app.get('/health', (req, res) => {
