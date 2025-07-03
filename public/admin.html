@@ -506,6 +506,15 @@
         </div>
 
         <div class="card">
+            <h2>Filter Completed Patients</h2>
+            <div class="input-group">
+              <input type="date" id="filterDate" />
+              <button class="btn btn-primary" id="filterBtn">🔍 Filter</button>
+              <button class="btn btn-warning" id="clearFilterBtn">❌ Clear</button>
+            </div>
+          </div>          
+
+        <div class="card">
             <h2>Completed Patients</h2>
             <div class="queue-list" id="completedPatientsList">
                 <div class="completed-item">No completed patients yet</div>
@@ -599,6 +608,9 @@
             currentPatientName: document.getElementById('currentPatientName'),
             currentPatientBadge: document.getElementById('currentPatientBadge'),
             currentPatientStatus: document.getElementById('currentPatientStatus'),
+            filterDateInput: document.getElementById('filterDate'),
+            filterBtn: document.getElementById('filterBtn'),
+            clearFilterBtn: document.getElementById('clearFilterBtn'),
             connectionStatus: document.getElementById('connection-status'),
             serverUrl: document.getElementById('server-url')
         };
@@ -990,38 +1002,44 @@
                 });
             });
         }
-
-        function renderCompletedPatients() {
+        function renderCompletedPatients(filterDate) {
             const container = elements.completedPatientsList;
             container.innerHTML = '';
-
-            if (!currentState.completed || currentState.completed.length === 0) {
-                container.innerHTML = '<div class="completed-item">No completed patients yet</div>';
-                return;
+          
+            let patientsToShow = currentState.completed;
+          
+            if (filterDate) {
+              patientsToShow = patientsToShow.filter(p => {
+                const completedDate = new Date(p.completedAt).toISOString().slice(0, 10);
+                return completedDate === filterDate;
+              });
             }
-
-            currentState.completed.forEach(patient => {
-                const item = document.createElement('div');
-                item.className = `completed-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
-                
-                const completedTime = patient.completedAt 
-                    ? new Date(patient.completedAt).toLocaleTimeString() 
-                    : 'Just now';
-
-                const statusText = patient.status === 'skipped' ? 'SKIPPED' : 'COMPLETED';
-                const statusClass = patient.status === 'skipped' ? 'tag-skipped' : 'tag-completed';
-
-                item.innerHTML = `
-                    <div>
-                        <strong>#${patient.patientNumber}</strong> - ${patient.name}
-                        <span class="status-tag ${statusClass}">${statusText}</span>
-                        <div class="completed-time">Completed at: ${completedTime}</div>
-                        ${patient.notes ? `<div><small>${patient.notes}</small></div>` : ''}
-                    </div>
-                `;
-                container.appendChild(item);
+          
+            if (!patientsToShow || patientsToShow.length === 0) {
+              container.innerHTML = '<div class="completed-item">No completed patients found</div>';
+              return;
+            }
+          
+            patientsToShow.forEach(patient => {
+              const item = document.createElement('div');
+              item.className = `completed-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
+              
+              const completedTime = new Date(patient.completedAt).toLocaleTimeString();
+              const statusText = patient.status === 'skipped' ? 'SKIPPED' : 'COMPLETED';
+              const statusClass = patient.status === 'skipped' ? 'tag-skipped' : 'tag-completed';
+          
+              item.innerHTML = `
+                <div>
+                  <strong>#${patient.patientNumber}</strong> - ${patient.name}
+                  <span class="status-tag ${statusClass}">${statusText}</span>
+                  <div class="completed-time">Completed at: ${completedTime}</div>
+                  ${patient.notes ? `<div><small>${patient.notes}</small></div>` : ''}
+                </div>
+              `;
+          
+              container.appendChild(item);
             });
-        }
+          }
 
         function setupDragAndDrop() {
             const queueList = elements.queueList;
@@ -1161,6 +1179,17 @@
                 elements.alertBox.style.display = 'none';
             }, 3000);
         }
+
+        filterBtn.addEventListener('click', () => {
+            const selectedDate = filterDateInput.value;
+            if (!selectedDate) return showAlert('Please pick a date', 'error');
+            renderCompletedPatients(selectedDate);
+          });
+          
+          clearFilterBtn.addEventListener('click', () => {
+            filterDateInput.value = '';
+            renderCompletedPatients(); // Reset to show all
+          });
     </script>
 </body>
 </html>

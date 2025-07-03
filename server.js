@@ -18,6 +18,8 @@ let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
+let historyStack = []; // NEW
+
 const clinicName = "Dr Maher Mahmoud Clinics";
 const MAX_COMPLETED_PATIENTS = 2000;
 
@@ -25,7 +27,7 @@ const MAX_COMPLETED_PATIENTS = 2000;
 const sortQueue = () => {
   const priorityValues = { emergency: 4, priority: 3, elderly: 2, normal: 1 };
   queue.sort((a, b) => {
-    return priorityValues[b.priority] - priorityValues[a.priority] || 
+    return priorityValues[b.priority] - priorityValues[a.priority] ||
            new Date(a.timestamp) - new Date(b.timestamp);
   });
 };
@@ -41,9 +43,9 @@ const addToCompleted = (patient, status = 'completed') => {
     patientNumber: patient.patientNumber,
     status: status
   };
-  
+
   completedPatients.unshift(completedPatient);
-  
+
   if (completedPatients.length > MAX_COMPLETED_PATIENTS) {
     completedPatients.pop();
   }
@@ -103,12 +105,15 @@ app.post('/api/next', (req, res) => {
     return res.status(400).json({ error: 'No more patients in queue' });
   }
 
+  const currentPatient = queue[currentPosition];
+
+  // Track history for "Previous" support
+  historyStack.push({ ...currentPatient });
+
   if (calledPatientId) {
-    const completedPatient = queue[currentPosition];
-    addToCompleted(completedPatient, 'completed');
+    addToCompleted(currentPatient, 'completed');
   } else {
-    const skippedPatient = queue[currentPosition];
-    addToCompleted(skippedPatient, 'skipped');
+    addToCompleted(currentPatient, 'skipped');
   }
 
   queue.splice(currentPosition, 1);
@@ -118,7 +123,7 @@ app.post('/api/next', (req, res) => {
     currentPosition = 0;
   }
 
-  res.json({ 
+  res.json({
     currentPosition,
     queue,
     completedPatients
@@ -126,14 +131,29 @@ app.post('/api/next', (req, res) => {
 });
 
 app.post('/api/previous', (req, res) => {
-  if (currentPosition <= 0) {
+  if (historyStack.length === 0) {
     return res.status(400).json({ error: 'No previous patient' });
   }
 
-  currentPosition--;
-  calledPatientId = queue[currentPosition].id;
+  const lastPatient = historyStack.pop();
+
+  // Prevent duplicates in queue
+  if (queue.find(p => p.id === lastPatient.id)) {
+    return res.status(400).json({ error: 'Patient already in queue' });
+  }
+
+  // Restore to current position
+  queue.splice(currentPosition, 0, lastPatient);
   queue[currentPosition].status = 'serving';
-  res.json({ currentPosition });
+  calledPatientId = lastPatient.id;
+
+  // Reassign patient numbers
+  queue.forEach((p, i) => p.patientNumber = i + 1);
+
+  res.json({
+    currentPosition,
+    queue
+  });
 });
 
 app.post('/api/update/:id', (req, res) => {
@@ -161,10 +181,8 @@ app.post('/api/update/:id', (req, res) => {
 
   queue.splice(newIndex, 0, updatedPatient);
 
-  // Reassign patient numbers
   queue.forEach((p, i) => p.patientNumber = i + 1);
 
-  // Update currentPosition if needed
   if (calledPatientId === id) {
     currentPosition = queue.findIndex(p => p.id === calledPatientId);
   }
@@ -194,10 +212,18 @@ app.delete('/api/remove/:id', (req, res) => {
 });
 
 app.post('/api/clear', (req, res) => {
-  queue = [];
+  queue = [];app.post('/api/clear', (req, res) => {
+    queue = [];
+    currentPosition = 0;
+    calledPatientId = null;
+    historyStack = [];
+    res.json({ message: 'Queue cleared, completed patients preserved' });
+  });
+  
   completedPatients = [];
   currentPosition = 0;
   calledPatientId = null;
+  historyStack = []; // clear this too
   res.json({ message: 'Queue cleared' });
 });
 
@@ -220,10 +246,8 @@ app.post('/api/reorder', (req, res) => {
   const [patient] = queue.splice(oldIndex, 1);
   queue.splice(newPosition, 0, patient);
 
-  // Recalculate patient numbers
   queue.forEach((p, i) => p.patientNumber = i + 1);
 
-  // Recalculate currentPosition if needed
   if (oldIndex < currentPosition && newPosition >= currentPosition) {
     currentPosition--;
   } else if (oldIndex > currentPosition && newPosition <= currentPosition) {

@@ -627,16 +627,15 @@
             modalPatientNumber.textContent = number;
             modalPatientName.textContent = name;
             callModal.style.display = 'flex';
-          
-            // Play bell first
+        
+            // Play bell sound once, then announce after it finishes
             bellSound.currentTime = 0;
             bellSound.play();
-          
-            // After bell ends, then announce
+        
             bellSound.onended = () => {
-              announcePatient(number, name);
+                announcePatient(number, name);
             };
-          }          
+        }                  
 
         function buildPriorityBadge(priority) {
             if (!priority || priority === 'normal' || priority === 'elderly') return '';
@@ -652,10 +651,10 @@
 
         function announcePatient(number, name) {
             if (!('speechSynthesis' in window)) return;
-            
+        
             const utterance = new SpeechSynthesisUtterance();
             const isArabic = /[\u0600-\u06FF]/.test(name);
-            
+        
             if (isArabic) {
                 utterance.text = `الرقم ${number}، ${name}`;
                 utterance.lang = 'ar-SA';
@@ -663,9 +662,9 @@
                 utterance.text = `Patient number ${number}, ${name}`;
                 utterance.lang = 'en-US';
             }
-            
+        
             window.speechSynthesis.speak(utterance);
-        }
+        }        
     </script>
 </body>
 </html>
