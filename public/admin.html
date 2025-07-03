@@ -506,21 +506,19 @@
         </div>
 
         <div class="card">
-            <h2>Filter Completed Patients</h2>
-            <div class="input-group">
-              <input type="date" id="filterDate" />
-              <button class="btn btn-primary" id="filterBtn">🔍 Filter</button>
-              <button class="btn btn-warning" id="clearFilterBtn">❌ Clear</button>
-            </div>
-          </div>          
-
-        <div class="card">
             <h2>Completed Patients</h2>
             <div class="queue-list" id="completedPatientsList">
                 <div class="completed-item">No completed patients yet</div>
             </div>
         </div>
     </div>
+
+    <div class="input-group">
+        <input type="date" id="filterDate" />
+        <button class="btn btn-primary" id="filterBtn">🔍 Filter</button>
+        <button class="btn btn-warning" id="clearFilterBtn">❌ Clear</button>
+        <button class="btn btn-success" id="downloadCSVBtn">⬇️ CSV</button> <!-- NEW -->
+      </div>
 
     <!-- Edit Patient Modal -->
     <div class="modal" id="editModal">
@@ -611,6 +609,7 @@
             filterDateInput: document.getElementById('filterDate'),
             filterBtn: document.getElementById('filterBtn'),
             clearFilterBtn: document.getElementById('clearFilterBtn'),
+            downloadCSVBtn: document.getElementById('downloadCSVBtn'),
             connectionStatus: document.getElementById('connection-status'),
             serverUrl: document.getElementById('server-url')
         };
@@ -642,7 +641,51 @@
             elements.patientNameInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') addPatient();
             });
-        }
+        
+            elements.filterBtn.addEventListener('click', () => {
+                const selectedDate = elements.filterDateInput.value;
+                if (!selectedDate) return showAlert('Please pick a date', 'error');
+                renderCompletedPatients(selectedDate);
+            });
+        
+            elements.clearFilterBtn.addEventListener('click', () => {
+                elements.filterDateInput.value = '';
+                renderCompletedPatients();
+            });
+
+        elements.downloadCSVBtn.addEventListener('click', () => {
+            const data = currentState.completed;
+        if (!data || data.length === 0) {
+        return showAlert('No completed patients to export', 'error');
+    }
+
+    const csvRows = [
+        ['Patient Number', 'Name', 'Priority', 'Status', 'Completed At', 'Notes']
+    ];
+
+    data.forEach(patient => {
+        const row = [
+            patient.patientNumber,
+            `"${patient.name}"`,
+            patient.priority,
+            patient.status,
+            new Date(patient.completedAt).toLocaleString(),
+            `"${patient.notes || ''}"`
+        ];
+        csvRows.push(row);
+    });
+
+        const csvContent = csvRows.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `completed_patients_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        });
+    }        
 
         async function checkConnection() {
             try {
@@ -1179,17 +1222,6 @@
                 elements.alertBox.style.display = 'none';
             }, 3000);
         }
-
-        filterBtn.addEventListener('click', () => {
-            const selectedDate = filterDateInput.value;
-            if (!selectedDate) return showAlert('Please pick a date', 'error');
-            renderCompletedPatients(selectedDate);
-          });
-          
-          clearFilterBtn.addEventListener('click', () => {
-            filterDateInput.value = '';
-            renderCompletedPatients(); // Reset to show all
-          });
     </script>
 </body>
 </html>
