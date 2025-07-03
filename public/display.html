@@ -191,12 +191,10 @@
             background-color: var(--warning-orange);
         }
 
-        /* Hide elderly priority indicator */
         .priority-elderly {
             display: none !important;
         }
 
-        /* Elderly patient styling */
         .queue-item.elderly .queue-name,
         .queue-item.elderly .patient-notes {
             color: var(--elderly-gray);
@@ -238,7 +236,6 @@
             transform: scale(1.1);
         }
 
-        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -302,6 +299,19 @@
             background-color: var(--primary-blue);
         }
 
+        .completed-container {
+            padding: 20px;
+            border-top: 2px solid var(--accent-blue);
+            grid-column: 1 / -1;
+        }
+
+        .completed-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 grid-template-columns: 1fr;
@@ -354,6 +364,14 @@
                 </div>
             </div>
         </div>
+        <div class="completed-container">
+            <h2>Recently Completed</h2>
+            <div class="completed-list" id="completedDisplay">
+                <div class="empty-queue">
+                    <p>No recently completed patients</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <button class="fullscreen-btn" id="fullscreenBtn">⛶</button>
@@ -382,7 +400,8 @@
             queue: [],
             currentPosition: 0,
             calledPatientId: null,
-            clinicName: ""
+            clinicName: "",
+            completedPatients: []
         };
         let lastCalled = null;
 
@@ -390,6 +409,7 @@
         const clinicNameDisplay = document.getElementById('clinicNameDisplay');
         const nowServingElement = document.getElementById('nowServing');
         const queueDisplay = document.getElementById('queueDisplay');
+        const completedDisplay = document.getElementById('completedDisplay');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const callModal = document.getElementById('callModal');
         const modalPatientNumber = document.getElementById('modalPatientNumber');
@@ -419,7 +439,7 @@
 
         async function fetchQueueData() {
             try {
-                const response = await fetch(QUEUE_ENDPOINT);
+                const response = await fetch(`${QUEUE_ENDPOINT}?${Date.now()}`);
                 
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('text/html')) {
@@ -433,10 +453,8 @@
                     throw new Error(data.error || 'Failed to fetch queue');
                 }
                 
-                if (JSON.stringify(data) !== JSON.stringify(lastState)) {
-                    lastState = data;
-                    renderQueue();
-                }
+                lastState = data;
+                renderQueue();
             } catch (error) {
                 console.error('Error fetching queue:', error);
                 renderQueue(lastState);
@@ -444,7 +462,7 @@
         }
 
         function renderQueue() {
-            const { queue, currentPosition, calledPatientId, clinicName } = lastState;
+            const { queue, currentPosition, calledPatientId, clinicName, completedPatients } = lastState;
 
             if (clinicName) {
                 clinicNameDisplay.textContent = `${clinicName} - Queue Display`;
@@ -452,6 +470,7 @@
 
             updateNowServing(queue, currentPosition, calledPatientId);
             updateQueueList(queue, currentPosition, calledPatientId);
+            updateCompletedList(completedPatients);
         }
 
         function updateNowServing(queue, currentPosition, calledPatientId) {
@@ -486,13 +505,6 @@
             } else {
                 nowServingElement.innerHTML = '<div class="current-patient">Please wait...</div>';
             }
-        }
-
-        function showCallModal(number, name) {
-            modalPatientNumber.textContent = number;
-            modalPatientName.textContent = name;
-            callModal.style.display = 'flex';
-            bellSound.play();
         }
 
         function updateQueueList(queue, currentPosition, calledPatientId) {
@@ -532,6 +544,40 @@
             if (queueDisplay.children.length === 0) {
                 queueDisplay.innerHTML = '<div class="empty-queue"><p>No patients currently waiting</p></div>';
             }
+        }
+
+        function updateCompletedList(completedPatients) {
+            completedDisplay.innerHTML = '';
+
+            if (!completedPatients || completedPatients.length === 0) {
+                completedDisplay.innerHTML = '<div class="empty-queue"><p>No recently completed patients</p></div>';
+                return;
+            }
+
+            completedPatients.forEach(patient => {
+                const item = document.createElement('div');
+                item.className = `queue-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
+                
+                const completedTime = patient.completedAt 
+                    ? new Date(patient.completedAt).toLocaleTimeString() 
+                    : 'Just now';
+
+                item.innerHTML = `
+                    <div class="queue-number">${patient.patientNumber}</div>
+                    <div class="queue-details">
+                        <div class="queue-name">${patient.name}</div>
+                        <div class="completed-time">${completedTime}</div>
+                    </div>
+                `;
+                completedDisplay.appendChild(item);
+            });
+        }
+
+        function showCallModal(number, name) {
+            modalPatientNumber.textContent = number;
+            modalPatientName.textContent = name;
+            callModal.style.display = 'flex';
+            bellSound.play();
         }
 
         function buildPriorityBadge(priority) {

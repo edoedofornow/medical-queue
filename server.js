@@ -18,7 +18,7 @@ let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-const clinicName = "Dr Maher Mahmoud Clinics";
+const clinicName = "City Medical Center";
 const MAX_COMPLETED_PATIENTS = 20;
 
 // Helper Functions
@@ -50,14 +50,19 @@ const addToCompleted = (patient) => {
 
 // API Endpoints
 app.get('/api/queue', (req, res) => {
+  sortQueue();
   res.json({
     queue,
     currentPosition,
     calledPatientId,
     clinicName,
-    completedPatients,
+    completedPatients: completedPatients.slice(0, 5),
     lastUpdated: new Date().toISOString()
   });
+});
+
+app.get('/api/completed', (req, res) => {
+  res.json(completedPatients);
 });
 
 app.post('/api/add', (req, res) => {
@@ -102,10 +107,7 @@ app.post('/api/next', (req, res) => {
     addToCompleted(completedPatient);
   }
 
-  // Remove the completed patient from the queue
   queue.splice(currentPosition, 1);
-  
-  // Don't increment position since we removed an item
   calledPatientId = null;
   
   res.json({ 
@@ -193,13 +195,9 @@ app.post('/api/reorder', (req, res) => {
     return res.status(404).json({ error: 'Patient not found' });
   }
 
-  // Get the patient and remove from old position
   const [patient] = queue.splice(oldIndex, 1);
-  
-  // Insert at new position
   queue.splice(newPosition, 0, patient);
   
-  // Update currentPosition based on the actual movement
   if (calledPatientId === patientId) {
     currentPosition = newPosition;
   } else if (oldIndex === currentPosition) {
@@ -216,10 +214,6 @@ app.post('/api/reorder', (req, res) => {
     currentPosition,
     calledPatientId
   });
-});
-
-app.get('/api/completed', (req, res) => {
-  res.json(completedPatients);
 });
 
 app.get('/health', (req, res) => {
