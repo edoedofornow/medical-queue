@@ -112,6 +112,12 @@ app.post('/api/update/:id', (req, res) => {
   };
 
   sortQueue();
+  
+  // If we're updating the currently called patient, update the calledPatientId
+  if (calledPatientId === id) {
+    calledPatientId = queue[index].id;
+  }
+  
   res.json(queue[index]);
 });
 
@@ -125,8 +131,14 @@ app.delete('/api/remove/:id', (req, res) => {
 
   const [removedPatient] = queue.splice(index, 1);
   
+  // Adjust current position if needed
   if (index < currentPosition) {
     currentPosition--;
+  }
+  
+  // If we removed the called patient, clear the calledPatientId
+  if (calledPatientId === id) {
+    calledPatientId = null;
   }
 
   res.json(removedPatient);
@@ -137,6 +149,48 @@ app.post('/api/clear', (req, res) => {
   currentPosition = 0;
   calledPatientId = null;
   res.json({ message: 'Queue cleared' });
+});
+
+// NEW ENDPOINT FOR REORDERING
+app.post('/api/reorder', (req, res) => {
+  const { patientId, newPosition } = req.body;
+  
+  // Validate inputs
+  if (!patientId || newPosition === undefined || newPosition < 0) {
+    return res.status(400).json({ error: 'Invalid reorder request' });
+  }
+
+  const oldIndex = queue.findIndex(p => p.id === patientId);
+  if (oldIndex === -1) {
+    return res.status(404).json({ error: 'Patient not found' });
+  }
+
+  // Don't allow moving beyond array bounds
+  if (newPosition >= queue.length) {
+    return res.status(400).json({ error: 'Invalid new position' });
+  }
+
+  // Get the patient and remove from old position
+  const [patient] = queue.splice(oldIndex, 1);
+  
+  // Insert at new position
+  queue.splice(newPosition, 0, patient);
+  
+  // Update currentPosition if needed
+  if (oldIndex < currentPosition && newPosition >= currentPosition) {
+    currentPosition--;
+  } else if (oldIndex > currentPosition && newPosition <= currentPosition) {
+    currentPosition++;
+  } else if (oldIndex === currentPosition) {
+    currentPosition = newPosition;
+  }
+
+  res.json({
+    success: true,
+    queue,
+    currentPosition,
+    calledPatientId
+  });
 });
 
 app.get('/health', (req, res) => {

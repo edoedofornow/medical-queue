@@ -362,13 +362,13 @@
             }
 
             // Update now serving
-            updateNowServing(queue, calledPatientId);
+            updateNowServing(queue, currentPosition, calledPatientId);
 
             // Update queue list
             updateQueueList(queue, currentPosition, calledPatientId);
         }
 
-        function updateNowServing(queue, calledPatientId) {
+        function updateNowServing(queue, currentPosition, calledPatientId) {
             if (calledPatientId) {
                 const patientIndex = queue.findIndex(p => p.id === calledPatientId);
                 const patient = queue[patientIndex];
