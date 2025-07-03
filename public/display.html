@@ -35,9 +35,35 @@
         .header {
             background-color: var(--primary-blue);
             color: white;
-            padding: 15px 0;
-            text-align: center;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .clinic-logo {
+            height: 40px;
+            width: 40px;
+            object-fit: contain;
+        }
+
+          
+        .clinic-name {
+            font-size: 1.6rem;
+            font-weight: bold;
+        }
+
+        .header-right {
+            font-size: 1.2rem;
+            font-weight: 500;
+            opacity: 0.9;
         }
 
         .header h1 {
@@ -348,8 +374,12 @@
 </head>
 <body>
     <div class="header">
-        <h1 id="clinicNameDisplay">Patient Queue Display</h1>
-    </div>
+        <div class="header-left">
+          <img src="https://i.ibb.co/V8GmMWC/circles.png" alt="Clinic Logo" class="clinic-logo">
+          <div id="clinicNameDisplay" class="clinic-name">Clinic Name</div>
+        </div>
+        <div class="header-right">Queue</div>
+      </div>      
 
     <div class="main-container">
         <div class="now-serving-container">
@@ -474,7 +504,7 @@
             const { queue, currentPosition, calledPatientId, clinicName, completedPatients } = lastState;
 
             if (clinicName) {
-                clinicNameDisplay.textContent = `${clinicName} - Queue Display`;
+                clinicNameDisplay.textContent = `${clinicName}`;
             }
 
             updateNowServing(queue, currentPosition, calledPatientId);
@@ -597,8 +627,16 @@
             modalPatientNumber.textContent = number;
             modalPatientName.textContent = name;
             callModal.style.display = 'flex';
+          
+            // Play bell first
+            bellSound.currentTime = 0;
             bellSound.play();
-        }
+          
+            // After bell ends, then announce
+            bellSound.onended = () => {
+              announcePatient(number, name);
+            };
+          }          
 
         function buildPriorityBadge(priority) {
             if (!priority || priority === 'normal' || priority === 'elderly') return '';

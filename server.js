@@ -18,8 +18,8 @@ let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-const clinicName = "City Medical Center";
-const MAX_COMPLETED_PATIENTS = 20;
+const clinicName = "Dr Maher Mahmoud Clinics";
+const MAX_COMPLETED_PATIENTS = 2000;
 
 // Helper Functions
 const sortQueue = () => {
