@@ -612,17 +612,34 @@
         
             const utterance = new SpeechSynthesisUtterance();
             const isArabic = /[\u0600-\u06FF]/.test(name);
+            const lang = isArabic ? 'ar-SA' : 'en-US';
         
-            if (isArabic) {
-                utterance.text = `الرقم ${number}، ${name}`;
-                utterance.lang = 'ar-SA';
-            } else {
-                utterance.text = `Patient number ${number}, ${name}`;
-                utterance.lang = 'en-US';
+            utterance.text = isArabic ? `الرقم ${number}، ${name}` : `Patient number ${number}, ${name}`;
+            utterance.lang = lang;
+        
+            const voices = speechSynthesis.getVoices();
+        
+            // Try to pick a female-sounding voice
+            let selectedVoice = voices.find(v =>
+                v.lang === lang && /female|woman/i.test(v.name)
+            );
+        
+            // Fallback: pick any matching language voice
+            if (!selectedVoice) {
+                selectedVoice = voices.find(v => v.lang === lang);
             }
         
-            window.speechSynthesis.speak(utterance);
-        }        
+            // Fallback: just use the first voice
+            if (!selectedVoice && voices.length > 0) {
+                selectedVoice = voices[0];
+            }
+        
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+        
+            speechSynthesis.speak(utterance);
+        }                
     </script>
 </body>
 </html>
