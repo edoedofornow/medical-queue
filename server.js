@@ -68,7 +68,7 @@ app.get('/api/completed', (req, res) => {
 
 app.post('/api/add', (req, res) => {
   const { name, priority = 'normal', notes = '' } = req.body;
-  
+
   if (!name) {
     return res.status(400).json({ error: 'Patient name is required' });
   }
@@ -113,7 +113,11 @@ app.post('/api/next', (req, res) => {
 
   queue.splice(currentPosition, 1);
   calledPatientId = null;
-  
+
+  if (currentPosition >= queue.length) {
+    currentPosition = 0;
+  }
+
   res.json({ 
     currentPosition,
     queue,
@@ -147,25 +151,26 @@ app.post('/api/update/:id', (req, res) => {
     priority: priority || queue[index].priority,
     notes: notes || queue[index].notes
   };
-  
-  queue.splice(index, 1); // Remove the patient
-  
-  let newIndex = queue.length; // Default to end
+
+  queue.splice(index, 1); // Remove patient
+
+  let newIndex = queue.length; // default to end
   if (!isNaN(patientNumber) && patientNumber > 0 && patientNumber <= queue.length + 1) {
     newIndex = patientNumber - 1;
   }
-  
-  queue.splice(newIndex, 0, updatedPatient); // Insert at new position
-  
-  // Recalculate patient numbers
+
+  queue.splice(newIndex, 0, updatedPatient);
+
+  // Reassign patient numbers
   queue.forEach((p, i) => p.patientNumber = i + 1);
-  
+
   // Update currentPosition if needed
   if (calledPatientId === id) {
     currentPosition = queue.findIndex(p => p.id === calledPatientId);
   }
-  
-  res.json(updatedPatient);  
+
+  res.json(updatedPatient);
+});
 
 app.delete('/api/remove/:id', (req, res) => {
   const { id } = req.params;
@@ -176,11 +181,11 @@ app.delete('/api/remove/:id', (req, res) => {
   }
 
   const [removedPatient] = queue.splice(index, 1);
-  
+
   if (index < currentPosition) {
     currentPosition--;
   }
-  
+
   if (calledPatientId === id) {
     calledPatientId = null;
   }
@@ -240,7 +245,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     queueLength: queue.length,
     completedPatients: completedPatients.length,
-    version: '16.7.56'
+    version: '16.7.59'
   });
 });
 
