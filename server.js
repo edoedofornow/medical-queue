@@ -18,8 +18,8 @@ let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-const clinicName = "Dr Maher Mahmoud Clinics";
-const MAX_COMPLETED_PATIENTS = 2000;
+const clinicName = "City Medical Center";
+const MAX_COMPLETED_PATIENTS = 20;
 
 // Helper Functions
 const sortQueue = () => {
@@ -206,6 +206,7 @@ app.post('/api/reorder', (req, res) => {
   const [patient] = queue.splice(oldIndex, 1);
   queue.splice(newPosition, 0, patient);
   
+  // Update currentPosition if needed
   if (oldIndex === currentPosition) {
     currentPosition = newPosition;
   } else if (oldIndex < currentPosition && newPosition >= currentPosition) {
@@ -213,6 +214,11 @@ app.post('/api/reorder', (req, res) => {
   } else if (oldIndex > currentPosition && newPosition <= currentPosition) {
     currentPosition++;
   }
+
+  // Reassign patient numbers based on new order
+  queue.forEach((patient, index) => {
+    patient.patientNumber = index + 1;
+  });
 
   res.json({
     success: true,
@@ -227,7 +233,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     queueLength: queue.length,
     completedPatients: completedPatients.length,
-    version: '16.7.54'
+    version: '16.7.56'
   });
 });
 

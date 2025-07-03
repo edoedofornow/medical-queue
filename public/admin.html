@@ -231,11 +231,24 @@
             align-items: center;
             padding: 12px 15px;
             border-bottom: 1px solid var(--light-blue);
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            cursor: grab;
+            user-select: none;
         }
 
         .queue-item:hover {
             background-color: rgba(0,0,0,0.03);
+        }
+
+        .queue-item.dragging {
+            opacity: 0.5;
+            background-color: var(--light-blue);
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .queue-item.over {
+            border-top: 2px solid var(--accent-blue);
         }
 
         .queue-item-number {
@@ -292,6 +305,14 @@
 
         .queue-remove-btn {
             color: var(--error-red);
+        }
+
+        .drag-handle {
+            cursor: grab;
+            padding: 0 10px;
+            margin-right: 5px;
+            color: var(--dark-gray);
+            font-size: 1.2rem;
         }
 
         .alert {
@@ -383,28 +404,6 @@
             font-size: 0.8rem;
             color: var(--dark-gray);
             margin-top: 3px;
-        }
-
-        .queue-item {
-            cursor: grab;
-            transition: transform 0.2s;
-        }
-
-        .queue-item.dragging {
-            opacity: 0.5;
-            background-color: var(--light-blue);
-            transform: scale(1.02);
-        }
-
-        .queue-item.over {
-            border-top: 2px solid var(--accent-blue);
-        }
-
-        .drag-handle {
-            cursor: grab;
-            padding: 0 10px;
-            margin-right: 5px;
-            color: var(--dark-gray);
         }
 
         #completedPatientsList {
@@ -574,6 +573,7 @@
         };
         let currentlyEditingId = null;
         let isOnline = false;
+        let draggedItem = null;
 
         // DOM Elements
         const elements = {
@@ -1023,7 +1023,6 @@
 
         function setupDragAndDrop() {
             const queueList = elements.queueList;
-            let draggedItem = null;
 
             queueList.querySelectorAll('.queue-item').forEach(item => {
                 item.addEventListener('dragstart', (e) => {
@@ -1049,17 +1048,12 @@
                 const afterElement = getDragAfterElement(queueList, e.clientY);
                 const currentItem = document.querySelector('.dragging');
                 
-                if (!currentItem || !draggedItem) return;
-                
-                if (afterElement) {
-                    queueList.insertBefore(currentItem, afterElement);
-                } else {
-                    queueList.appendChild(currentItem);
-                }
+                if (!currentItem) return;
                 
                 queueList.querySelectorAll('.queue-item').forEach(item => {
                     item.classList.remove('over');
                 });
+
                 if (afterElement) {
                     afterElement.classList.add('over');
                 }
@@ -1068,15 +1062,38 @@
             queueList.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const patientId = e.dataTransfer.getData('text/plain');
-                const newPosition = getNewPositionInQueue(patientId);
+                const afterElement = document.querySelector('.queue-item.over');
+                const queueItems = Array.from(queueList.querySelectorAll('.queue-item:not(.dragging)'));
                 
+                let newPosition;
+                if (afterElement) {
+                    newPosition = queueItems.findIndex(item => item.dataset.id === afterElement.dataset.id);
+                } else {
+                    newPosition = queueItems.length;
+                }
+
                 if (newPosition !== -1) {
                     try {
-                        await reorderPatient(patientId, newPosition);
+                        const response = await fetch(ENDPOINTS.reorder, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                patientId,
+                                newPosition
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Failed to reorder patient');
+                        }
+
                         await fetchQueueData();
                     } catch (error) {
                         console.error('Error reordering patient:', error);
-                        showAlert('Failed to reorder patient', 'error');
+                        showAlert(`Failed to reorder patient: ${error.message}`, 'error');
                         renderQueue();
                     }
                 }
@@ -1100,40 +1117,6 @@
                     return closest;
                 }
             }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-
-        function getNewPositionInQueue(patientId) {
-            const queueItems = elements.queueList.querySelectorAll('.queue-item');
-            for (let i = 0; i < queueItems.length; i++) {
-                if (queueItems[i].dataset.id === patientId) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        async function reorderPatient(patientId, newPosition) {
-            try {
-                const response = await fetch(ENDPOINTS.reorder, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        patientId,
-                        newPosition
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to reorder patient');
-                }
-
-                return await response.json();
-            } catch (error) {
-                console.error('Error reordering patient:', error);
-                throw error;
-            }
         }
 
         function updateCurrentPatientDisplay() {

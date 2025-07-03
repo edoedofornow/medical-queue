@@ -129,6 +129,7 @@
             border-radius: 6px;
             padding: 8px 12px;
             min-height: 50px;
+            transition: all 0.2s;
         }
 
         .queue-number {
@@ -458,15 +459,18 @@
                     throw new Error(data.error || 'Failed to fetch queue');
                 }
                 
+                // Check if queue order has changed
+                const queueChanged = JSON.stringify(data.queue) !== JSON.stringify(lastState.queue);
                 lastState = data;
-                renderQueue();
+                
+                renderQueue(queueChanged);
             } catch (error) {
                 console.error('Error fetching queue:', error);
-                renderQueue(lastState);
+                renderQueue(false);
             }
         }
 
-        function renderQueue() {
+        function renderQueue(queueChanged = false) {
             const { queue, currentPosition, calledPatientId, clinicName, completedPatients } = lastState;
 
             if (clinicName) {
@@ -474,7 +478,7 @@
             }
 
             updateNowServing(queue, currentPosition, calledPatientId);
-            updateQueueList(queue, currentPosition, calledPatientId);
+            updateQueueList(queue, currentPosition, calledPatientId, queueChanged);
             updateCompletedList(completedPatients);
         }
 
@@ -512,7 +516,12 @@
             }
         }
 
-        function updateQueueList(queue, currentPosition, calledPatientId) {
+        function updateQueueList(queue, currentPosition, calledPatientId, queueChanged) {
+            // Only rebuild the queue if it has changed
+            if (!queueChanged && queueDisplay.children.length > 0) {
+                return;
+            }
+
             queueDisplay.innerHTML = '';
 
             if (queue.length === 0) {
