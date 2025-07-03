@@ -427,407 +427,333 @@
     </div>
 
     <script>
-        // API endpoints
-        const API_BASE = '/api';
-        const QUEUE_ENDPOINT = `${API_BASE}/queue`;
-        const CALL_ENDPOINT = `${API_BASE}/call`;
-        const NEXT_ENDPOINT = `${API_BASE}/next`;
-        const PREVIOUS_ENDPOINT = `${API_BASE}/previous`;
-        const CLEAR_ENDPOINT = `${API_BASE}/clear`;
-        const ADD_ENDPOINT = `${API_BASE}/add`;
-        const UPDATE_ENDPOINT = `${API_BASE}/update`;
-        const REMOVE_ENDPOINT = `${API_BASE}/remove`;
+// API endpoints - Updated to match server.js
+const API_BASE = '/api';
+const QUEUE_ENDPOINT = `${API_BASE}/queue`;
+const CALL_ENDPOINT = `${API_BASE}/call`;
+const NEXT_ENDPOINT = `${API_BASE}/next`;
+const PREV_ENDPOINT = `${API_BASE}/previous`;
+const CLEAR_ENDPOINT = `${API_BASE}/clear`;
+const ADD_ENDPOINT = `${API_BASE}/add`;
+const UPDATE_ENDPOINT = `${API_BASE}/update`;
+const REMOVE_ENDPOINT = `${API_BASE}/remove`;
 
-        // Priority levels (higher number = higher priority)
-        const PRIORITY_LEVELS = {
-            emergency: 4,
-            priority: 3,
-            elderly: 2,
-            normal: 1
-        };
+// DOM Elements
+const alertBox = document.getElementById('alert');
+const addBtn = document.getElementById('addBtn');
+const callBtn = document.getElementById('callBtn');
+const nextBtn = document.getElementById('nextBtn');
+const previousBtn = document.getElementById('previousBtn');
+const clearBtn = document.getElementById('clearBtn');
+const patientNameInput = document.getElementById('patientName');
+const prioritySelect = document.getElementById('prioritySelect');
+const patientNotesInput = document.getElementById('patientNotes');
 
-        // Current state
-        let currentState = {
-            queue: [],
-            currentPosition: 0,
-            calledCustomer: null,
-            clinicName: ""
-        };
-        let currentlyEditingIndex = -1;
+const editModal = document.getElementById('editModal');
+const editPatientName = document.getElementById('editPatientName');
+const editPrioritySelect = document.getElementById('editPrioritySelect');
+const editPatientNotes = document.getElementById('editPatientNotes');
+const saveEditBtn = document.getElementById('saveEditBtn');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
 
-        // DOM elements
-        const alertBox = document.getElementById('alert');
-        const addBtn = document.getElementById('addBtn');
-        const callBtn = document.getElementById('callBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const previousBtn = document.getElementById('previousBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const patientNameInput = document.getElementById('patientName');
-        const prioritySelect = document.getElementById('prioritySelect');
-        const patientNotesInput = document.getElementById('patientNotes');
-        const editModal = document.getElementById('editModal');
-        const editPatientName = document.getElementById('editPatientName');
-        const editPrioritySelect = document.getElementById('editPrioritySelect');
-        const editPatientNotes = document.getElementById('editPatientNotes');
-        const saveEditBtn = document.getElementById('saveEditBtn');
-        const cancelEditBtn = document.getElementById('cancelEditBtn');
+let currentState = {
+  queue: [],
+  currentPosition: 0,
+  calledCustomer: null
+};
+let currentlyEditingIndex = -1;
 
-        // Initialize the admin panel
-        fetchQueueData();
-        setInterval(fetchQueueData, 1000); // Poll every second
+// Initialize
+fetchQueueData();
+setInterval(fetchQueueData, 1000);
 
-        // Event listeners
-        addBtn.addEventListener('click', addPatient);
-        callBtn.addEventListener('click', callPatient);
-        nextBtn.addEventListener('click', nextPatient);
-        previousBtn.addEventListener('click', previousPatient);
-        clearBtn.addEventListener('click', clearQueue);
-        saveEditBtn.addEventListener('click', savePatientEdit);
-        cancelEditBtn.addEventListener('click', closeEditModal);
-        
-        patientNameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addPatient();
-            }
-        });
+// Event listeners
+addBtn.addEventListener('click', addPatient);
+callBtn.addEventListener('click', callPatient);
+nextBtn.addEventListener('click', nextPatient);
+previousBtn.addEventListener('click', previousPatient);
+clearBtn.addEventListener('click', clearQueue);
+saveEditBtn.addEventListener('click', savePatientEdit);
+cancelEditBtn.addEventListener('click', closeEditModal);
+patientNameInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') addPatient();
+});
 
-        // Fetch queue data from server
-        async function fetchQueueData() {
-            try {
-                const response = await fetch(QUEUE_ENDPOINT);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                
-                // Only update if something changed
-                if (JSON.stringify(data) !== JSON.stringify(currentState)) {
-                    currentState = data;
-                    updateAdminPanel();
-                }
-            } catch (error) {
-                console.error('Error fetching queue data:', error);
-                showAlert('Error connecting to server', 'error');
-            }
-        }
+async function fetchQueueData() {
+  try {
+    const response = await fetch(QUEUE_ENDPOINT);
+    if (!response.ok) throw new Error('Network response was not ok');
+    const data = await response.json();
+    
+    if (JSON.stringify(data) !== JSON.stringify(currentState)) {
+      currentState = data;
+      renderQueue();
+    }
+  } catch (error) {
+    console.error('Error fetching queue:', error);
+    showAlert('Error connecting to server', 'error');
+  }
+}
 
-        // Function to add a new patient
-        async function addPatient() {
-            const name = patientNameInput.value.trim();
-            const priority = prioritySelect.value;
-            const notes = patientNotesInput.value.trim();
-            
-            if (!name) {
-                showAlert('Please enter a patient name', 'error');
-                patientNameInput.focus();
-                return;
-            }
+async function callPatient() {
+  try {
+    const response = await fetch(CALL_ENDPOINT, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to call patient');
+    showAlert('Patient called', 'success');
+    fetchQueueData();
+  } catch (error) {
+    console.error('Error calling patient:', error);
+    showAlert('Failed to call patient', 'error');
+  }
+}
 
-            try {
-                const response = await fetch(ADD_ENDPOINT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name,
-                        priority,
-                        notes
-                    })
-                });
+async function nextPatient() {
+  try {
+    const response = await fetch(NEXT_ENDPOINT, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to move to next patient');
+    showAlert('Moved to next patient', 'success');
+    fetchQueueData();
+  } catch (error) {
+    console.error('Error moving to next patient:', error);
+    showAlert('Failed to move to next patient', 'error');
+  }
+}
 
-                if (!response.ok) throw new Error('Failed to add patient');
+async function previousPatient() {
+  try {
+    const response = await fetch(PREV_ENDPOINT, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to return to previous patient');
+    showAlert('Returned to previous patient', 'success');
+    fetchQueueData();
+  } catch (error) {
+    console.error('Error returning to previous:', error);
+    showAlert('Failed to return to previous patient', 'error');
+  }
+}
 
-                const result = await response.json();
-                
-                // Clear input fields
-                patientNameInput.value = '';
-                patientNotesInput.value = '';
-                patientNameInput.focus();
-                
-                showAlert(result.message || 'Patient added successfully!', 'success');
-                fetchQueueData(); // Refresh data
-            } catch (error) {
-                console.error('Error adding patient:', error);
-                showAlert('Failed to add patient', 'error');
-            }
-        }
+async function clearQueue() {
+  if (!confirm('Are you sure you want to clear the queue?')) return;
+  
+  try {
+    const response = await fetch(CLEAR_ENDPOINT, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to clear queue');
+    showAlert('Queue cleared', 'success');
+    fetchQueueData();
+  } catch (error) {
+    console.error('Error clearing queue:', error);
+    showAlert('Failed to clear queue', 'error');
+  }
+}
 
-        // Function to call a patient
-        async function callPatient() {
-            try {
-                const response = await fetch(CALL_ENDPOINT, {
-                    method: 'POST'
-                });
+async function addPatient() {
+  const name = patientNameInput.value.trim();
+  const priority = prioritySelect.value;
+  const notes = patientNotesInput.value.trim();
+  
+  if (!name) {
+    showAlert('Please enter a patient name', 'error');
+    return;
+  }
 
-                if (!response.ok) throw new Error('Failed to call patient');
+  try {
+    const response = await fetch(ADD_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name, priority, notes })
+    });
 
-                const result = await response.json();
-                showAlert(result.message || 'Patient called', 'success');
-                fetchQueueData(); // Refresh data
-            } catch (error) {
-                console.error('Error calling patient:', error);
-                showAlert('Failed to call patient', 'error');
-            }
-        }
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to add patient');
+    }
 
-        // Function to move to next patient
-        async function nextPatient() {
-            try {
-                const response = await fetch(NEXT_ENDPOINT, {
-                    method: 'POST'
-                });
+    patientNameInput.value = '';
+    patientNotesInput.value = '';
+    showAlert('Patient added successfully', 'success');
+    fetchQueueData();
+  } catch (error) {
+    console.error('Error adding patient:', error);
+    showAlert(error.message || 'Failed to add patient', 'error');
+  }
+}
 
-                if (!response.ok) throw new Error('Failed to move to next patient');
+async function removePatient(index) {
+  if (index < 0 || index >= currentState.queue.length) return;
+  
+  if (!confirm(`Remove ${currentState.queue[index].name} from queue?`)) return;
 
-                const result = await response.json();
-                showAlert(result.message || 'Moved to next patient', 'success');
-                fetchQueueData(); // Refresh data
-            } catch (error) {
-                console.error('Error moving to next patient:', error);
-                showAlert('Failed to move to next patient', 'error');
-            }
-        }
+  try {
+    const response = await fetch(REMOVE_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ index })
+    });
 
-        // Function to return to previous patient
-        async function previousPatient() {
-            try {
-                const response = await fetch(PREVIOUS_ENDPOINT, {
-                    method: 'POST'
-                });
+    if (!response.ok) throw new Error('Failed to remove patient');
+    
+    showAlert('Patient removed', 'success');
+    fetchQueueData();
+  } catch (error) {
+    console.error('Error removing patient:', error);
+    showAlert('Failed to remove patient', 'error');
+  }
+}
 
-                if (!response.ok) throw new Error('Failed to return to previous patient');
+async function savePatientEdit() {
+  const name = editPatientName.value.trim();
+  const priority = editPrioritySelect.value;
+  const notes = editPatientNotes.value.trim();
+  
+  if (!name) {
+    showAlert('Please enter a patient name', 'error');
+    return;
+  }
 
-                const result = await response.json();
-                showAlert(result.message || 'Returned to previous patient', 'success');
-                fetchQueueData(); // Refresh data
-            } catch (error) {
-                console.error('Error returning to previous patient:', error);
-                showAlert('Failed to return to previous patient', 'error');
-            }
-        }
+  try {
+    const response = await fetch(UPDATE_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        index: currentlyEditingIndex,
+        name,
+        priority,
+        notes
+      })
+    });
 
-        // Function to clear the queue
-        async function clearQueue() {
-            if (!confirm('Are you sure you want to clear the entire queue?')) {
-                return;
-            }
+    if (!response.ok) throw new Error('Failed to update patient');
+    
+    showAlert('Patient updated', 'success');
+    closeEditModal();
+    fetchQueueData();
+  } catch (error) {
+    console.error('Error updating patient:', error);
+    showAlert('Failed to update patient', 'error');
+  }
+}
 
-            try {
-                const response = await fetch(CLEAR_ENDPOINT, {
-                    method: 'POST'
-                });
+function openEditModal(index) {
+  if (index < 0 || index >= currentState.queue.length) return;
+  
+  currentlyEditingIndex = index;
+  const patient = currentState.queue[index];
+  
+  editPatientName.value = patient.name;
+  editPrioritySelect.value = patient.priority;
+  editPatientNotes.value = patient.notes || '';
+  
+  editModal.style.display = 'flex';
+}
 
-                if (!response.ok) throw new Error('Failed to clear queue');
+function closeEditModal() {
+  editModal.style.display = 'none';
+  currentlyEditingIndex = -1;
+}
 
-                const result = await response.json();
-                showAlert(result.message || 'Queue cleared successfully', 'success');
-                fetchQueueData(); // Refresh data
-            } catch (error) {
-                console.error('Error clearing queue:', error);
-                showAlert('Failed to clear queue', 'error');
-            }
-        }
+function renderQueue() {
+  const queueList = document.getElementById('queueList');
+  queueList.innerHTML = '';
 
-        // Function to update the admin panel display
-        function updateAdminPanel() {
-            const { queue, currentPosition, calledCustomer, clinicName } = currentState;
-            
-            // Update current patient display
-            const currentPatientNumber = document.getElementById('currentPatientNumber');
-            const currentPatientName = document.getElementById('currentPatientName');
-            const currentPatientStatus = document.getElementById('currentPatientStatus');
-            
-            if (calledCustomer) {
-                const patientIndex = queue.findIndex(item => item.name === calledCustomer);
-                if (patientIndex !== -1) {
-                    currentPatientNumber.textContent = patientIndex + 1;
-                    currentPatientName.textContent = calledCustomer;
-                    currentPatientStatus.textContent = 'SERVING';
-                    currentPatientStatus.className = 'status-tag tag-serving';
-                }
-            } else if (queue.length > 0 && currentPosition < queue.length) {
-                const nextPatient = queue[currentPosition];
-                currentPatientNumber.textContent = currentPosition + 1;
-                currentPatientName.textContent = nextPatient.name;
-                currentPatientStatus.textContent = 'NEXT';
-                currentPatientStatus.className = 'status-tag tag-waiting';
-            } else {
-                currentPatientNumber.textContent = '-';
-                currentPatientName.textContent = 'No patient';
-                currentPatientStatus.textContent = 'WAITING';
-                currentPatientStatus.className = 'status-tag tag-waiting';
-            }
-            
-            // Update queue list
-            const queueList = document.getElementById('queueList');
-            queueList.innerHTML = '';
-            
-            if (queue.length === 0) {
-                queueList.innerHTML = '<div class="queue-item"><div>No patients in queue</div></div>';
-                return;
-            }
-            
-            // Display all patients in queue starting from current position
-            queue.slice(currentPosition).forEach((patient, index) => {
-                const position = currentPosition + index + 1;
-                const patientItem = document.createElement('div');
-                patientItem.className = 'queue-item';
-                patientItem.setAttribute('data-index', currentPosition + index);
-                
-                let priorityClass = '';
-                let priorityText = '';
-                switch(patient.priority) {
-                    case 'emergency':
-                        priorityClass = 'priority-emergency';
-                        priorityText = 'EMERGENCY';
-                        break;
-                    case 'priority':
-                        priorityClass = 'priority-priority';
-                        priorityText = 'PRIORITY';
-                        break;
-                    case 'elderly':
-                        priorityClass = 'priority-elderly';
-                        priorityText = 'ELDERLY';
-                        break;
-                    default:
-                        priorityClass = 'priority-normal';
-                        priorityText = 'NORMAL';
-                }
-                
-                patientItem.innerHTML = `
-                    <div class="queue-item-number">${position}</div>
-                    <div>
-                        <div>${patient.name} <span class="priority-indicator ${priorityClass}">${priorityText}</span></div>
-                        ${patient.notes ? `<small>${patient.notes}</small>` : ''}
-                    </div>
-                    <div class="queue-controls">
-                        <button class="queue-edit-btn" data-index="${currentPosition + index}">✏️</button>
-                        <button class="queue-remove-btn" data-index="${currentPosition + index}">✕</button>
-                    </div>
-                `;
-                
-                // Highlight current patient if called
-                if (calledCustomer && patient.name === calledCustomer) {
-                    patientItem.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
-                }
-                
-                queueList.appendChild(patientItem);
-            });
-            
-            // Add event listeners to queue controls
-            document.querySelectorAll('.queue-edit-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    openEditModal(index);
-                });
-            });
-            
-            document.querySelectorAll('.queue-remove-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    removePatientFromQueue(index);
-                });
-            });
-        }
+  const { queue, currentPosition, calledCustomer } = currentState;
 
-        // Function to remove patient from queue
-        async function removePatientFromQueue(index) {
-            if (index < 0 || index >= currentState.queue.length) return;
-            
-            const patient = currentState.queue[index];
-            if (!confirm(`Remove ${patient.name} from the queue?`)) return;
+  if (queue.length === 0) {
+    queueList.innerHTML = '<div class="queue-item"><div>No patients in queue</div></div>';
+    updateCurrentPatientDisplay();
+    return;
+  }
 
-            try {
-                const response = await fetch(REMOVE_ENDPOINT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ index })
-                });
+  queue.forEach((patient, index) => {
+    const queueItem = document.createElement('div');
+    queueItem.className = 'queue-item';
+    if (patient.name === calledCustomer) {
+      queueItem.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+    }
 
-                if (!response.ok) throw new Error('Failed to remove patient');
+    const priorityClass = `priority-${patient.priority}`;
+    const priorityText = patient.priority.toUpperCase();
 
-                const result = await response.json();
-                showAlert(result.message || `Removed ${patient.name} from queue`, 'success');
-                fetchQueueData(); // Refresh data
-            } catch (error) {
-                console.error('Error removing patient:', error);
-                showAlert('Failed to remove patient', 'error');
-            }
-        }
+    queueItem.innerHTML = `
+      <div class="queue-item-number">${index + 1}</div>
+      <div>
+        <div>${patient.name} <span class="priority-indicator ${priorityClass}">${priorityText}</span></div>
+        ${patient.notes ? `<small>${patient.notes}</small>` : ''}
+      </div>
+      <div class="queue-controls">
+        <button class="queue-edit-btn" data-index="${index}">✏️</button>
+        <button class="queue-remove-btn" data-index="${index}">✕</button>
+      </div>
+    `;
 
-        // Function to open edit modal
-        function openEditModal(index) {
-            if (index < 0 || index >= currentState.queue.length) return;
-            
-            currentlyEditingIndex = index;
-            const patient = currentState.queue[index];
-            
-            editPatientName.value = patient.name;
-            editPrioritySelect.value = patient.priority;
-            editPatientNotes.value = patient.notes || '';
-            
-            editModal.style.display = 'flex';
-        }
+    queueList.appendChild(queueItem);
+  });
 
-        // Function to close edit modal
-        function closeEditModal() {
-            editModal.style.display = 'none';
-            currentlyEditingIndex = -1;
-        }
+  // Add event listeners to dynamically created buttons
+  document.querySelectorAll('.queue-edit-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const index = parseInt(e.target.dataset.index);
+      openEditModal(index);
+    });
+  });
 
-        // Function to save patient edits
-        async function savePatientEdit() {
-            if (currentlyEditingIndex < 0 || currentlyEditingIndex >= currentState.queue.length) {
-                closeEditModal();
-                return;
-            }
-            
-            const name = editPatientName.value.trim();
-            const priority = editPrioritySelect.value;
-            const notes = editPatientNotes.value.trim();
-            
-            if (!name) {
-                showAlert('Please enter a patient name', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(UPDATE_ENDPOINT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        index: currentlyEditingIndex,
-                        name,
-                        priority,
-                        notes
-                    })
-                });
+  document.querySelectorAll('.queue-remove-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const index = parseInt(e.target.dataset.index);
+      removePatient(index);
+    });
+  });
 
-                if (!response.ok) throw new Error('Failed to update patient');
+  updateCurrentPatientDisplay();
+}
 
-                const result = await response.json();
-                showAlert(result.message || 'Patient updated successfully', 'success');
-                closeEditModal();
-                fetchQueueData(); // Refresh data
-            } catch (error) {
-                console.error('Error updating patient:', error);
-                showAlert('Failed to update patient', 'error');
-            }
-        }
+function updateCurrentPatientDisplay() {
+  const { queue, currentPosition, calledCustomer } = currentState;
+  
+  const currentPatientNumber = document.getElementById('currentPatientNumber');
+  const currentPatientName = document.getElementById('currentPatientName');
+  const currentPatientStatus = document.getElementById('currentPatientStatus');
 
-        // Function to show alert messages
-        function showAlert(message, type = 'success') {
-            alertBox.textContent = message;
-            alertBox.className = `alert alert-${type}`;
-            alertBox.style.display = 'block';
-            
-            setTimeout(() => {
-                alertBox.style.display = 'none';
-            }, 3000);
-        }
+  if (calledCustomer) {
+    const patientIndex = queue.findIndex(p => p.name === calledCustomer);
+    currentPatientNumber.textContent = patientIndex + 1;
+    currentPatientName.textContent = calledCustomer;
+    currentPatientStatus.textContent = 'SERVING';
+    currentPatientStatus.className = 'status-tag tag-serving';
+  } else if (queue.length > 0 && currentPosition < queue.length) {
+    currentPatientNumber.textContent = currentPosition + 1;
+    currentPatientName.textContent = queue[currentPosition].name;
+    currentPatientStatus.textContent = 'NEXT';
+    currentPatientStatus.className = 'status-tag tag-waiting';
+  } else {
+    currentPatientNumber.textContent = '-';
+    currentPatientName.textContent = 'No patient';
+    currentPatientStatus.textContent = 'WAITING';
+    currentPatientStatus.className = 'status-tag tag-waiting';
+  }
+}
+
+function showAlert(message, type = 'success') {
+  alertBox.textContent = message;
+  alertBox.className = `alert alert-${type}`;
+  alertBox.style.display = 'block';
+  
+  setTimeout(() => {
+    alertBox.style.display = 'none';
+  }, 3000);
+}
     </script>
 </body>
 </html>
