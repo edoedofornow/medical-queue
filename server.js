@@ -18,7 +18,7 @@ let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-const clinicName = "City Medical Center";
+const clinicName = "Dr Maher Mahmoud Clinics";
 const MAX_COMPLETED_PATIENTS = 20;
 
 // Helper Functions
@@ -31,14 +31,14 @@ const sortQueue = () => {
 };
 
 const addToCompleted = (patient) => {
-  // Create a copy of the patient without the status field
   const completedPatient = {
     id: patient.id,
     name: patient.name,
     priority: patient.priority,
     notes: patient.notes,
     timestamp: patient.timestamp,
-    completedAt: new Date().toISOString()
+    completedAt: new Date().toISOString(),
+    patientNumber: patient.patientNumber
   };
   
   completedPatients.unshift(completedPatient);
@@ -55,7 +55,7 @@ app.get('/api/queue', (req, res) => {
     currentPosition,
     calledPatientId,
     clinicName,
-    completedPatients, // Include completed patients in the main endpoint
+    completedPatients,
     lastUpdated: new Date().toISOString()
   });
 });
@@ -73,7 +73,8 @@ app.post('/api/add', (req, res) => {
     priority,
     notes,
     status: 'waiting',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    patientNumber: queue.length + 1
   };
 
   queue.push(newPatient);
@@ -127,7 +128,7 @@ app.post('/api/previous', (req, res) => {
 
 app.post('/api/update/:id', (req, res) => {
   const { id } = req.params;
-  const { name, priority, notes } = req.body;
+  const { name, priority, notes, patientNumber } = req.body;
   const index = queue.findIndex(p => p.id === id);
 
   if (index === -1) {
@@ -138,7 +139,8 @@ app.post('/api/update/:id', (req, res) => {
     ...queue[index],
     name: name || queue[index].name,
     priority: priority || queue[index].priority,
-    notes: notes || queue[index].notes
+    notes: notes || queue[index].notes,
+    patientNumber: patientNumber || queue[index].patientNumber
   };
 
   sortQueue();
@@ -214,6 +216,10 @@ app.post('/api/reorder', (req, res) => {
     currentPosition,
     calledPatientId
   });
+});
+
+app.get('/api/completed', (req, res) => {
+  res.json(completedPatients);
 });
 
 app.get('/health', (req, res) => {

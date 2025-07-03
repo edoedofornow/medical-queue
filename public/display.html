@@ -402,10 +402,9 @@
             fullscreenBtn.addEventListener('click', toggleFullscreen);
             closeModalBtn.addEventListener('click', () => callModal.style.display = 'none');
             fetchQueueData();
-            setInterval(fetchQueueData, 1000); // Poll every second
+            setInterval(fetchQueueData, 1000);
         });
 
-        // Fullscreen toggle
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => {
@@ -418,12 +417,10 @@
             }
         }
 
-        // Fetch queue data
         async function fetchQueueData() {
             try {
                 const response = await fetch(QUEUE_ENDPOINT);
                 
-                // Check if response is HTML (error page)
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('text/html')) {
                     const text = await response.text();
@@ -442,53 +439,47 @@
                 }
             } catch (error) {
                 console.error('Error fetching queue:', error);
-                // Fallback to last known state
                 renderQueue(lastState);
             }
         }
 
-        // Render queue
         function renderQueue() {
             const { queue, currentPosition, calledPatientId, clinicName } = lastState;
 
-            // Update clinic name
             if (clinicName) {
                 clinicNameDisplay.textContent = `${clinicName} - Queue Display`;
             }
 
-            // Update now serving
             updateNowServing(queue, currentPosition, calledPatientId);
-
-            // Update queue list
             updateQueueList(queue, currentPosition, calledPatientId);
         }
 
         function updateNowServing(queue, currentPosition, calledPatientId) {
             if (calledPatientId) {
-                const patientIndex = queue.findIndex(p => p.id === calledPatientId);
-                const patient = queue[patientIndex];
+                const patient = queue.find(p => p.id === calledPatientId);
                 
-                const patientContainer = document.createElement('div');
-                patientContainer.className = `current-patient-container ${patient.priority === 'elderly' ? 'elderly' : ''}`;
-                
-                patientContainer.innerHTML = `
-                    <div class="patient-number">${patientIndex + 1}</div>
-                    <div class="current-patient-info">
-                        <div class="current-patient">${patient.name}</div>
-                        <div class="patient-status-type">
-                            ${patient.priority === 'elderly' ? '' : buildPriorityBadge(patient.priority)}
-                            <span class="queue-status status-serving">NOW ATTENDING</span>
-                        </div>
-                    </div>`;
-                
-                nowServingElement.innerHTML = '';
-                nowServingElement.appendChild(patientContainer);
-                
-                // Announce if newly called
-                if (lastCalled !== calledPatientId) {
-                    lastCalled = calledPatientId;
-                    showCallModal(patientIndex + 1, patient.name);
-                    announcePatient(patientIndex + 1, patient.name);
+                if (patient) {
+                    const patientContainer = document.createElement('div');
+                    patientContainer.className = `current-patient-container ${patient.priority === 'elderly' ? 'elderly' : ''}`;
+                    
+                    patientContainer.innerHTML = `
+                        <div class="patient-number">${patient.patientNumber}</div>
+                        <div class="current-patient-info">
+                            <div class="current-patient">${patient.name}</div>
+                            <div class="patient-status-type">
+                                ${patient.priority === 'elderly' ? '' : buildPriorityBadge(patient.priority)}
+                                <span class="queue-status status-serving">NOW ATTENDING</span>
+                            </div>
+                        </div>`;
+                    
+                    nowServingElement.innerHTML = '';
+                    nowServingElement.appendChild(patientContainer);
+                    
+                    if (lastCalled !== calledPatientId) {
+                        lastCalled = calledPatientId;
+                        showCallModal(patient.patientNumber, patient.name);
+                        announcePatient(patient.patientNumber, patient.name);
+                    }
                 }
             } else if (queue.length > 0 && currentPosition < queue.length) {
                 nowServingElement.innerHTML = '<div class="current-patient">Please wait for next patient</div>';
@@ -501,8 +492,6 @@
             modalPatientNumber.textContent = number;
             modalPatientName.textContent = name;
             callModal.style.display = 'flex';
-            
-            // Play bell sound
             bellSound.play();
         }
 
@@ -515,7 +504,6 @@
             }
 
             queue.forEach((patient, index) => {
-                // Skip served patients
                 if (index < currentPosition && !calledPatientId) return;
                 if (patient.id === calledPatientId) return;
                 
@@ -526,7 +514,7 @@
                 queueItem.className = `queue-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
                 
                 queueItem.innerHTML = `
-                    <div class="queue-number">${index + 1}</div>
+                    <div class="queue-number">${patient.patientNumber}</div>
                     <div class="queue-details">
                         <div class="queue-name-type">
                             <div class="queue-name">${patient.name}</div>
