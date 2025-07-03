@@ -1,125 +1,593 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Queue Display</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;700&display=swap">
-<style>
-  :root{
-    --primary-blue:#1a237e;--accent-blue:#303f9f;--light-blue:#e8eaf6;--white:#fff;
-    --success:#4caf50;--warn:#ff9800;--error:#f44336;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--white);color:#333;overflow:hidden}
-  .header{background:var(--primary-blue);color:#fff;text-align:center;padding:14px 0;box-shadow:0 2px 5px rgba(0,0,0,.1)}
-  h1{font-size:1.5rem;margin:0}
-  .main{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 60px)}
-  .left{background:var(--light-blue);padding:20px;border-right:2px solid var(--accent-blue);display:flex;flex-direction:column;justify-content:center;align-items:center}
-  .right{padding:20px;overflow-y:auto}
-  .current-num{font-size:3.5rem;font-weight:700;color:var(--accent-blue)}
-  .current-name{font-size:2rem;font-weight:700;color:var(--primary-blue)}
-  .tag{display:inline-block;padding:4px 10px;border-radius:12px;font-size:.8rem;font-weight:700;color:#fff;margin-left:6px}
-  .serving{background:var(--success)} .next{background:var(--warn)}
-  .queue-item{display:flex;align-items:center;border:1px solid var(--light-blue);border-radius:6px;padding:8px 12px;margin-bottom:8px}
-  .num{font-weight:700;color:var(--primary-blue);min-width:32px;text-align:center}
-  .name{font-weight:700;margin-right:6px}
-  .note{font-size:.8rem;color:#666}
-  .prio{font-size:.7rem;padding:2px 6px;border-radius:10px;color:#fff;margin-left:6px}
-  .prio.emergency{background:var(--error)}
-  .prio.priority{background:var(--warn)}
-  .prio.elderly{background:#666}
-  @media(max-width:768px){.main{grid-template-columns:1fr}.left{border-right:none;border-bottom:2px solid var(--accent-blue)}}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Queue Display</title>
+    <style>
+        :root {
+            --primary-blue: #1a237e;
+            --accent-blue: #303f9f;
+            --light-blue: #e8eaf6;
+            --white: #ffffff;
+            --gray: #f5f5f5;
+            --dark-gray: #757575;
+            --success-green: #4caf50;
+            --warning-orange: #ff9800;
+            --error-red: #f44336;
+            --info-blue: #2196f3;
+            --elderly-gray: #666666;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--white);
+            color: #333;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 15px 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 60px);
+        }
+
+        .now-serving-container {
+            background-color: var(--light-blue);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid var(--accent-blue);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .now-serving {
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .queue-container {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+            transition: all 0.2s;
+        }
+
+        .fullscreen-btn:hover {
+            background-color: var(--primary-blue);
+            transform: scale(1.1);
+        }
+
+        /* Now Serving Section */
+        .current-patient-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .patient-number {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .current-patient-info {
+            text-align: left;
+        }
+
+        .current-patient {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-blue);
+            margin: 0;
+        }
+
+        .patient-status-type {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        /* Queue Sections */
+        .queue-section h2 {
+            color: var(--primary-blue);
+            margin-top: 0;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--light-blue);
+            font-size: 20px;
+        }
+
+        .queue-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            background-color: var(--white);
+            border: 1px solid var(--light-blue);
+            border-radius: 6px;
+            padding: 8px 12px;
+            min-height: 50px;
+        }
+
+        .queue-number {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--primary-blue);
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .queue-details {
+            flex-grow: 1;
+        }
+
+        .queue-name-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .queue-name {
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .queue-status-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 3px;
+        }
+
+        .queue-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .status-waiting {
+            background-color: #fff8e1;
+            color: #ff8f00;
+        }
+
+        .status-next {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status-serving {
+            background-color: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .patient-notes {
+            font-size: 0.8rem;
+            margin-top: 3px;
+            color: var(--dark-gray);
+        }
+
+        /* Priority Indicators */
+        .priority-indicator {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: inline-block;
+            color: white;
+        }
+        
+        .priority-priority {
+            background-color: var(--warning-orange);
+        }
+        
+        .priority-emergency {
+            background-color: var(--error-red);
+        }
+        
+        .priority-elderly {
+            background-color: var(--elderly-gray);
+        }
+
+        .elderly-text {
+            color: var(--elderly-gray);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.2);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-patient {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-blue);
+            margin: 15px 0;
+        }
+
+        .modal-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--accent-blue);
+            margin: 15px 0;
+        }
+
+        .close-modal {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        /* Empty State */
+        .empty-queue {
+            text-align: center;
+            padding: 30px;
+            color: var(--dark-gray);
+            font-size: 1.1rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .now-serving-container {
+                border-right: none;
+                border-bottom: 2px solid var(--accent-blue);
+                height: auto;
+                min-height: 250px;
+            }
+
+            .patient-number {
+                font-size: 3rem;
+            }
+
+            .current-patient {
+                font-size: 1.8rem;
+            }
+
+            .fullscreen-btn {
+                left: 10px;
+                bottom: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="header"><h1>Queue Display</h1></div>
-  <div class="main">
-    <section class="left">
-      <div id="now">
-        <p>Loading...</p>
-      </div>
-    </section>
-    <section class="right">
-      <h2 style="color:var(--primary-blue);margin-bottom:10px">Waiting List</h2>
-      <div id="list"></div>
-    </section>
-  </div>
+    <div class="header">
+        <h1 id="clinicNameDisplay">Patient Queue Display</h1>
+    </div>
 
-<audio id="bell" src="https://assets.mixkit.co/active_storage/sfx/1569/1569-preview.mp3" preload="auto"></audio>
+    <div class="main-container">
+        <div class="now-serving-container">
+            <div class="now-serving">
+                <h2>Now Attending</h2>
+                <div id="nowServing">
+                    <div class="current-patient">Please wait...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="queue-container">
+            <div class="queue-section">
+                <h2>Queue</h2>
+                <div class="queue-list" id="queueDisplay">
+                    <div class="empty-queue">
+                        <p>The queue is currently empty</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="fullscreen-btn" id="fullscreenBtn">⛶</button>
+    
+    <div class="modal" id="callModal">
+        <div class="modal-content">
+            <h2>Patient Called</h2>
+            <div class="modal-number" id="modalPatientNumber">-</div>
+            <div class="modal-patient" id="modalPatientName">No patient</div>
+            <button class="close-modal" id="closeModal">Close</button>
+        </div>
+    </div>
+    
+    <audio id="bellSound" src="https://assets.mixkit.co/active_storage/sfx/1569/1569-preview.mp3" preload="auto"></audio>
+    
+    <script>
+        // Global state
+        let lastState = {
+            queue: [],
+            currentPosition: 0,
+            calledCustomer: null,
+            clinicName: ""
+        };
+        let lastCalled = null;
 
-<script>
-const API='/api/queue';
-let lastCalled=null;
+        // Fullscreen functionality
+        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+                document.getElementById('fullscreenBtn').textContent = '🗗';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    document.getElementById('fullscreenBtn').textContent = '⛶';
+                }
+            }
+        }
 
-function badge(priority){
-  if(!priority||priority==='normal')return'';
-  const cls={emergency:'emergency',priority:'priority',elderly:'elderly'}[priority];
-  const txt=priority.toUpperCase();
-  return `<span class="prio ${cls}">${txt}</span>`;
-}
+        // Fetch queue data from server
+        async function getQueueState() {
+            try {
+                const response = await fetch('/api/queue');
+                if (!response.ok) throw new Error('Network response was not ok');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching queue data:', error);
+                return lastState; // Return last known state if fetch fails
+            }
+        }
 
-function render(state){
-  const {queue,currentPosition,calledCustomer}=state;
-  /* now serving */
-  const now=document.getElementById('now');
-  if(!queue.length){
-    now.innerHTML='<p>No patients.</p>';
-  }else if(calledCustomer){
-    const idx=queue.findIndex(p=>p.name===calledCustomer);
-    now.innerHTML=`
-      <div class="current-num">#${idx+1}</div>
-      <div class="current-name">${calledCustomer}</div>
-      <span class="tag serving">NOW ATTENDING</span>
-    `;
-    if(lastCalled!==calledCustomer){announce(idx+1,calledCustomer);lastCalled=calledCustomer;}
-  }else{
-    const next=queue[currentPosition];
-    now.innerHTML=`
-      <div class="current-name">Please wait</div>
-      <span class="tag next">NEXT</span>
-    `;
-  }
+        // Build priority badge HTML
+        function buildPriorityBadge(priority) {
+            if (!priority || priority === 'normal') return '';
+            
+            const classMap = {
+                'emergency': 'priority-emergency',
+                'priority': 'priority-priority',
+                'elderly': 'priority-elderly'
+            };
+            
+            const cls = classMap[priority] || '';
+            return `<span class="priority-indicator ${cls}">${priority.toUpperCase()}</span>`;
+        }
 
-  /* list */
-  const list=document.getElementById('list');list.innerHTML='';
-  if(!queue.length){list.innerHTML='<p>No waiting patients.</p>';return;}
-  queue.forEach((p,i)=>{
-    if(calledCustomer&&p.name===calledCustomer)return; /* skip showing current in list */
-    const div=document.createElement('div');div.className='queue-item';
-    div.innerHTML=`
-      <div class="num">${i+1}</div>
-      <div style="flex:1">
-        <span class="name">${p.name}</span>${badge(p.priority)}
-        ${p.notes?`<div class="note">${p.notes}</div>`:''}
-      </div>`;
-    list.appendChild(div);
-  });
-}
+        // Render the queue display
+        function renderQueue(state) {
+            const { queue, currentPosition, calledCustomer, clinicName } = state;
+            
+            // Update clinic name if provided
+            if (clinicName) {
+                document.getElementById('clinicNameDisplay').textContent = `${clinicName} - Queue Display`;
+            }
+            
+            // Now Serving Section
+            const nowServingElement = document.getElementById('nowServing');
+            if (calledCustomer) {
+                const patientIndex = queue.findIndex(p => p.name === calledCustomer);
+                const currentPatient = queue[patientIndex];
+                
+                nowServingElement.innerHTML = `
+                    <div class="current-patient-container">
+                        <div class="patient-number">${patientIndex + 1}</div>
+                        <div class="current-patient-info">
+                            <div class="current-patient">${calledCustomer}</div>
+                            <div class="patient-status-type">
+                                ${buildPriorityBadge(currentPatient?.priority)}
+                                <span class="queue-status status-serving">NOW ATTENDING</span>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                // Announce patient if newly called
+                if (lastCalled !== calledCustomer) {
+                    lastCalled = calledCustomer;
+                    announcePatient(patientIndex + 1, calledCustomer);
+                }
+            } else if (queue.length && currentPosition < queue.length) {
+                nowServingElement.innerHTML = '<div class="current-patient">Please wait for next patient</div>';
+            } else {
+                nowServingElement.innerHTML = '<div class="current-patient">Please wait...</div>';
+            }
+            
+            // Queue List Section
+            const queueDisplay = document.getElementById('queueDisplay');
+            
+            if (!queue.length) {
+                queueDisplay.innerHTML = '<div class="empty-queue"><p>The queue is currently empty</p></div>';
+                return;
+            }
+            
+            queueDisplay.innerHTML = '';
+            
+            // Sort by priority: Emergency > Priority > Elderly > Normal
+            const priorityOrder = { emergency: 4, priority: 3, elderly: 2, normal: 1 };
+            const sortedQueue = [...queue].sort((a, b) => 
+                priorityOrder[b.priority || 'normal'] - priorityOrder[a.priority || 'normal'] || 
+                new Date(a.timestamp) - new Date(b.timestamp)
+            );
+            
+            sortedQueue.forEach(item => {
+                const originalPosition = queue.findIndex(p => p.name === item.name) + 1;
+                
+                // Skip already served patients
+                if (originalPosition - 1 <= currentPosition && !calledCustomer) return;
+                if (item.name === calledCustomer) return;
+                
+                // Determine status
+                let status = 'WAITING', statusClass = 'status-waiting';
+                if (originalPosition === currentPosition + 1) {
+                    status = 'NEXT';
+                    statusClass = 'status-next';
+                }
+                
+                const queueItem = document.createElement('div');
+                queueItem.className = `queue-item ${item.priority === 'elderly' ? 'elderly-text' : ''}`;
+                queueItem.innerHTML = `
+                    <div class="queue-number">${originalPosition}</div>
+                    <div class="queue-details">
+                        <div class="queue-name-type">
+                            <div class="queue-name">${item.name}</div>
+                            ${buildPriorityBadge(item.priority)}
+                        </div>
+                        <div class="queue-status-type">
+                            <span class="queue-status ${statusClass}">${status}</span>
+                        </div>
+                        ${item.notes ? `<div class="patient-notes">${item.notes}</div>` : ''}
+                    </div>`;
+                
+                queueDisplay.appendChild(queueItem);
+            });
+            
+            if (!queueDisplay.children.length) {
+                queueDisplay.innerHTML = '<div class="empty-queue"><p>No patients currently waiting</p></div>';
+            }
+        }
 
-function announce(num,name){
-  document.getElementById('bell').play();
-  document.getElementById('bell').onended=()=>{
-    if(!('speechSynthesis'in window))return;
-    const utter=new SpeechSynthesisUtterance();
-    const hasAr=/[\u0600-\u06FF]/.test(name);
-    if(hasAr){
-      utter.text=`الرقم ${num}، ${name}`;
-      utter.lang='ar-SA';
-    }else{
-      utter.text=`Patient number ${num}, ${name}`;
-      utter.lang='en-US';
-    }
-    window.speechSynthesis.speak(utter);
-  };
-}
+        // Announce patient with sound and speech
+        function announcePatient(number, name) {
+            const bellSound = document.getElementById('bellSound');
+            bellSound.play();
+            
+            bellSound.onended = () => {
+                if (!('speechSynthesis' in window)) return;
+                
+                const utterance = new SpeechSynthesisUtterance();
+                const isArabic = /[\u0600-\u06FF]/.test(name);
+                
+                if (isArabic) {
+                    utterance.text = `الرقم ${number}، ${name}`;
+                    utterance.lang = 'ar-SA';
+                } else {
+                    utterance.text = `Patient number ${number}, ${name}`;
+                    utterance.lang = 'en-US';
+                }
+                
+                // Try to find appropriate voice
+                const voices = window.speechSynthesis.getVoices();
+                const preferredVoice = voices.find(voice => 
+                    isArabic ? voice.lang.includes('ar') : 
+                    voice.lang.includes('en') && voice.name.includes('Female')
+                );
+                
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                    utterance.pitch = isArabic ? 1.0 : 1.2;
+                    utterance.rate = isArabic ? 0.9 : 1.0;
+                }
+                
+                window.speechSynthesis.speak(utterance);
+                
+                // Show modal
+                document.getElementById('modalPatientNumber').textContent = number;
+                document.getElementById('modalPatientName').textContent = name;
+                document.getElementById('callModal').style.display = 'flex';
+            };
+        }
 
-async function poll(){
-  const res=await fetch(API);
-  const state=await res.json();
-  render(state);
-}
-setInterval(poll,2000);poll();
-</script>
+        // Close modal handler
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('callModal').style.display = 'none';
+        });
+
+        // Main update loop
+        async function updateDisplay() {
+            try {
+                const state = await getQueueState();
+                lastState = state;
+                renderQueue(state);
+            } catch (error) {
+                console.error('Error updating display:', error);
+            }
+        }
+
+        // Initialize and start polling
+        function init() {
+            // Load voices for speech synthesis
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.getVoices();
+            }
+            
+            // Start polling server every second
+            setInterval(updateDisplay, 1000);
+            updateDisplay(); // Initial call
+        }
+
+        // Start the application
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
 </html>
