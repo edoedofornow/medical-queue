@@ -19,10 +19,14 @@
             --elderly-gray: #666666;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--white);
             color: #333;
             overflow: hidden;
@@ -72,32 +76,6 @@
             overflow-y: auto;
         }
 
-        .fullscreen-btn {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            width: 40px;
-            height: 40px;
-            background-color: var(--accent-blue);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 1.2rem;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 10;
-            transition: all 0.2s;
-        }
-
-        .fullscreen-btn:hover {
-            background-color: var(--primary-blue);
-            transform: scale(1.1);
-        }
-
-        /* Now Serving Section */
         .current-patient-container {
             display: flex;
             align-items: center;
@@ -128,10 +106,9 @@
             margin-top: 5px;
         }
 
-        /* Queue Sections */
         .queue-section h2 {
             color: var(--primary-blue);
-            margin-top: 0;
+            margin: 0;
             padding-bottom: 5px;
             border-bottom: 2px solid var(--light-blue);
             font-size: 20px;
@@ -162,10 +139,6 @@
             text-align: center;
         }
 
-        .queue-details {
-            flex-grow: 1;
-        }
-
         .queue-name-type {
             display: flex;
             align-items: center;
@@ -177,13 +150,6 @@
             font-size: 1rem;
             font-weight: bold;
             margin: 0;
-        }
-
-        .queue-status-type {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 3px;
         }
 
         .queue-status {
@@ -209,13 +175,6 @@
             color: #388e3c;
         }
 
-        .patient-notes {
-            font-size: 0.8rem;
-            margin-top: 3px;
-            color: var(--dark-gray);
-        }
-
-        /* Priority Indicators */
         .priority-indicator {
             font-size: 0.7rem;
             padding: 2px 6px;
@@ -223,79 +182,19 @@
             display: inline-block;
             color: white;
         }
-        
-        .priority-priority {
-            background-color: var(--warning-orange);
-        }
-        
+
         .priority-emergency {
             background-color: var(--error-red);
         }
-        
+
+        .priority-priority {
+            background-color: var(--warning-orange);
+        }
+
         .priority-elderly {
             background-color: var(--elderly-gray);
         }
 
-        .elderly-text {
-            color: var(--elderly-gray);
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: white;
-            padding: 25px;
-            border-radius: 8px;
-            text-align: center;
-            max-width: 350px;
-            width: 90%;
-            box-shadow: 0 3px 15px rgba(0,0,0,0.2);
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .modal-patient {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: var(--primary-blue);
-            margin: 15px 0;
-        }
-
-        .modal-number {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--accent-blue);
-            margin: 15px 0;
-        }
-
-        .close-modal {
-            background-color: var(--accent-blue);
-            color: white;
-            border: none;
-            padding: 8px 18px;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-
-        /* Empty State */
         .empty-queue {
             text-align: center;
             padding: 30px;
@@ -303,7 +202,31 @@
             font-size: 1.1rem;
         }
 
-        /* Responsive Design */
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+            transition: all 0.2s;
+        }
+
+        .fullscreen-btn:hover {
+            background-color: var(--primary-blue);
+            transform: scale(1.1);
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 grid-template-columns: 1fr;
@@ -346,7 +269,6 @@
                 </div>
             </div>
         </div>
-        
         <div class="queue-container">
             <div class="queue-section">
                 <h2>Queue</h2>
@@ -358,236 +280,200 @@
             </div>
         </div>
     </div>
-    
+
     <button class="fullscreen-btn" id="fullscreenBtn">⛶</button>
-    
-    <div class="modal" id="callModal">
-        <div class="modal-content">
-            <h2>Patient Called</h2>
-            <div class="modal-number" id="modalPatientNumber">-</div>
-            <div class="modal-patient" id="modalPatientName">No patient</div>
-            <button class="close-modal" id="closeModal">Close</button>
-        </div>
-    </div>
-    
-    <audio id="bellSound" src="https://assets.mixkit.co/active_storage/sfx/1569/1569-preview.mp3" preload="auto"></audio>
-    
+
     <script>
-        // Global state
+        // Configuration
+        const API_BASE = 'https://medical-queue.onrender.com/api';
+        const QUEUE_ENDPOINT = `${API_BASE}/queue`;
+
+        // State
         let lastState = {
             queue: [],
             currentPosition: 0,
-            calledCustomer: null,
+            calledPatientId: null,
             clinicName: ""
         };
         let lastCalled = null;
 
-        // Fullscreen functionality
-        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-        
+        // DOM Elements
+        const clinicNameDisplay = document.getElementById('clinicNameDisplay');
+        const nowServingElement = document.getElementById('nowServing');
+        const queueDisplay = document.getElementById('queueDisplay');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            fetchQueueData();
+            setInterval(fetchQueueData, 1000); // Poll every second
+        });
+
+        // Fullscreen toggle
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => {
-                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                    console.error('Error attempting to enable fullscreen:', err);
                 });
-                document.getElementById('fullscreenBtn').textContent = '🗗';
+                fullscreenBtn.textContent = '🗗';
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                    document.getElementById('fullscreenBtn').textContent = '⛶';
-                }
+                document.exitFullscreen();
+                fullscreenBtn.textContent = '⛶';
             }
         }
 
-        // Fetch queue data from server
-        async function getQueueState() {
+        // Fetch queue data
+        async function fetchQueueData() {
             try {
-                const response = await fetch('/api/queue');
-                if (!response.ok) throw new Error('Network response was not ok');
-                return await response.json();
+                const response = await fetch(QUEUE_ENDPOINT);
+                
+                // Check if response is HTML (error page)
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    const text = await response.text();
+                    throw new Error(`Server returned HTML: ${text.substring(0, 100)}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch queue');
+                }
+                
+                if (JSON.stringify(data) !== JSON.stringify(lastState)) {
+                    lastState = data;
+                    renderQueue();
+                }
             } catch (error) {
-                console.error('Error fetching queue data:', error);
-                return lastState; // Return last known state if fetch fails
+                console.error('Error fetching queue:', error);
+                // Fallback to last known state
+                renderQueue(lastState);
             }
         }
 
-        // Build priority badge HTML
+        // Render queue
+        function renderQueue() {
+            const { queue, currentPosition, calledPatientId, clinicName } = lastState;
+
+            // Update clinic name
+            if (clinicName) {
+                clinicNameDisplay.textContent = `${clinicName} - Queue Display`;
+            }
+
+            // Update now serving
+            updateNowServing(queue, calledPatientId);
+
+            // Update queue list
+            updateQueueList(queue, currentPosition, calledPatientId);
+        }
+
+        function updateNowServing(queue, calledPatientId) {
+            if (calledPatientId) {
+                const patientIndex = queue.findIndex(p => p.id === calledPatientId);
+                const patient = queue[patientIndex];
+                
+                nowServingElement.innerHTML = `
+                    <div class="current-patient-container">
+                        <div class="patient-number">${patientIndex + 1}</div>
+                        <div class="current-patient-info">
+                            <div class="current-patient">${patient.name}</div>
+                            <div class="patient-status-type">
+                                ${buildPriorityBadge(patient.priority)}
+                                <span class="queue-status status-serving">NOW ATTENDING</span>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                // Announce if newly called
+                if (lastCalled !== calledPatientId) {
+                    lastCalled = calledPatientId;
+                    announcePatient(patientIndex + 1, patient.name);
+                }
+            } else if (queue.length > 0 && currentPosition < queue.length) {
+                nowServingElement.innerHTML = '<div class="current-patient">Please wait for next patient</div>';
+            } else {
+                nowServingElement.innerHTML = '<div class="current-patient">Please wait...</div>';
+            }
+        }
+
+        function updateQueueList(queue, currentPosition, calledPatientId) {
+            queueDisplay.innerHTML = '';
+
+            if (queue.length === 0) {
+                queueDisplay.innerHTML = '<div class="empty-queue"><p>The queue is currently empty</p></div>';
+                return;
+            }
+
+            // Sort by priority
+            const priorityOrder = { emergency: 4, priority: 3, elderly: 2, normal: 1 };
+            const sortedQueue = [...queue].sort((a, b) => 
+                priorityOrder[b.priority] - priorityOrder[a.priority] || 
+                new Date(a.timestamp) - new Date(b.timestamp)
+            );
+
+            sortedQueue.forEach(patient => {
+                const originalPosition = queue.findIndex(p => p.id === patient.id) + 1;
+                
+                // Skip served patients
+                if (originalPosition - 1 < currentPosition && !calledPatientId) return;
+                if (patient.id === calledPatientId) return;
+                
+                const status = originalPosition === currentPosition + 1 ? 'NEXT' : 'WAITING';
+                const statusClass = originalPosition === currentPosition + 1 ? 'status-next' : 'status-waiting';
+                
+                const queueItem = document.createElement('div');
+                queueItem.className = `queue-item ${patient.priority === 'elderly' ? 'elderly-text' : ''}`;
+                queueItem.innerHTML = `
+                    <div class="queue-number">${originalPosition}</div>
+                    <div class="queue-details">
+                        <div class="queue-name-type">
+                            <div class="queue-name">${patient.name}</div>
+                            ${buildPriorityBadge(patient.priority)}
+                        </div>
+                        <div class="queue-status-type">
+                            <span class="queue-status ${statusClass}">${status}</span>
+                        </div>
+                        ${patient.notes ? `<div class="patient-notes">${patient.notes}</div>` : ''}
+                    </div>`;
+                
+                queueDisplay.appendChild(queueItem);
+            });
+
+            if (queueDisplay.children.length === 0) {
+                queueDisplay.innerHTML = '<div class="empty-queue"><p>No patients currently waiting</p></div>';
+            }
+        }
+
         function buildPriorityBadge(priority) {
             if (!priority || priority === 'normal') return '';
             
             const classMap = {
-                'emergency': 'priority-emergency',
-                'priority': 'priority-priority',
-                'elderly': 'priority-elderly'
+                emergency: 'priority-emergency',
+                priority: 'priority-priority',
+                elderly: 'priority-elderly'
             };
             
             const cls = classMap[priority] || '';
             return `<span class="priority-indicator ${cls}">${priority.toUpperCase()}</span>`;
         }
 
-        // Render the queue display
-        function renderQueue(state) {
-            const { queue, currentPosition, calledCustomer, clinicName } = state;
-            
-            // Update clinic name if provided
-            if (clinicName) {
-                document.getElementById('clinicNameDisplay').textContent = `${clinicName} - Queue Display`;
-            }
-            
-            // Now Serving Section
-            const nowServingElement = document.getElementById('nowServing');
-            if (calledCustomer) {
-                const patientIndex = queue.findIndex(p => p.name === calledCustomer);
-                const currentPatient = queue[patientIndex];
-                
-                nowServingElement.innerHTML = `
-                    <div class="current-patient-container">
-                        <div class="patient-number">${patientIndex + 1}</div>
-                        <div class="current-patient-info">
-                            <div class="current-patient">${calledCustomer}</div>
-                            <div class="patient-status-type">
-                                ${buildPriorityBadge(currentPatient?.priority)}
-                                <span class="queue-status status-serving">NOW ATTENDING</span>
-                            </div>
-                        </div>
-                    </div>`;
-                
-                // Announce patient if newly called
-                if (lastCalled !== calledCustomer) {
-                    lastCalled = calledCustomer;
-                    announcePatient(patientIndex + 1, calledCustomer);
-                }
-            } else if (queue.length && currentPosition < queue.length) {
-                nowServingElement.innerHTML = '<div class="current-patient">Please wait for next patient</div>';
-            } else {
-                nowServingElement.innerHTML = '<div class="current-patient">Please wait...</div>';
-            }
-            
-            // Queue List Section
-            const queueDisplay = document.getElementById('queueDisplay');
-            
-            if (!queue.length) {
-                queueDisplay.innerHTML = '<div class="empty-queue"><p>The queue is currently empty</p></div>';
-                return;
-            }
-            
-            queueDisplay.innerHTML = '';
-            
-            // Sort by priority: Emergency > Priority > Elderly > Normal
-            const priorityOrder = { emergency: 4, priority: 3, elderly: 2, normal: 1 };
-            const sortedQueue = [...queue].sort((a, b) => 
-                priorityOrder[b.priority || 'normal'] - priorityOrder[a.priority || 'normal'] || 
-                new Date(a.timestamp) - new Date(b.timestamp)
-            );
-            
-            sortedQueue.forEach(item => {
-                const originalPosition = queue.findIndex(p => p.name === item.name) + 1;
-                
-                // Skip already served patients
-                if (originalPosition - 1 <= currentPosition && !calledCustomer) return;
-                if (item.name === calledCustomer) return;
-                
-                // Determine status
-                let status = 'WAITING', statusClass = 'status-waiting';
-                if (originalPosition === currentPosition + 1) {
-                    status = 'NEXT';
-                    statusClass = 'status-next';
-                }
-                
-                const queueItem = document.createElement('div');
-                queueItem.className = `queue-item ${item.priority === 'elderly' ? 'elderly-text' : ''}`;
-                queueItem.innerHTML = `
-                    <div class="queue-number">${originalPosition}</div>
-                    <div class="queue-details">
-                        <div class="queue-name-type">
-                            <div class="queue-name">${item.name}</div>
-                            ${buildPriorityBadge(item.priority)}
-                        </div>
-                        <div class="queue-status-type">
-                            <span class="queue-status ${statusClass}">${status}</span>
-                        </div>
-                        ${item.notes ? `<div class="patient-notes">${item.notes}</div>` : ''}
-                    </div>`;
-                
-                queueDisplay.appendChild(queueItem);
-            });
-            
-            if (!queueDisplay.children.length) {
-                queueDisplay.innerHTML = '<div class="empty-queue"><p>No patients currently waiting</p></div>';
-            }
-        }
-
-        // Announce patient with sound and speech
         function announcePatient(number, name) {
-            const bellSound = document.getElementById('bellSound');
-            bellSound.play();
+            if (!('speechSynthesis' in window)) return;
             
-            bellSound.onended = () => {
-                if (!('speechSynthesis' in window)) return;
-                
-                const utterance = new SpeechSynthesisUtterance();
-                const isArabic = /[\u0600-\u06FF]/.test(name);
-                
-                if (isArabic) {
-                    utterance.text = `الرقم ${number}، ${name}`;
-                    utterance.lang = 'ar-SA';
-                } else {
-                    utterance.text = `Patient number ${number}, ${name}`;
-                    utterance.lang = 'en-US';
-                }
-                
-                // Try to find appropriate voice
-                const voices = window.speechSynthesis.getVoices();
-                const preferredVoice = voices.find(voice => 
-                    isArabic ? voice.lang.includes('ar') : 
-                    voice.lang.includes('en') && voice.name.includes('Female')
-                );
-                
-                if (preferredVoice) {
-                    utterance.voice = preferredVoice;
-                    utterance.pitch = isArabic ? 1.0 : 1.2;
-                    utterance.rate = isArabic ? 0.9 : 1.0;
-                }
-                
-                window.speechSynthesis.speak(utterance);
-                
-                // Show modal
-                document.getElementById('modalPatientNumber').textContent = number;
-                document.getElementById('modalPatientName').textContent = name;
-                document.getElementById('callModal').style.display = 'flex';
-            };
-        }
-
-        // Close modal handler
-        document.getElementById('closeModal').addEventListener('click', () => {
-            document.getElementById('callModal').style.display = 'none';
-        });
-
-        // Main update loop
-        async function updateDisplay() {
-            try {
-                const state = await getQueueState();
-                lastState = state;
-                renderQueue(state);
-            } catch (error) {
-                console.error('Error updating display:', error);
-            }
-        }
-
-        // Initialize and start polling
-        function init() {
-            // Load voices for speech synthesis
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.getVoices();
+            const utterance = new SpeechSynthesisUtterance();
+            const isArabic = /[\u0600-\u06FF]/.test(name);
+            
+            if (isArabic) {
+                utterance.text = `الرقم ${number}، ${name}`;
+                utterance.lang = 'ar-SA';
+            } else {
+                utterance.text = `Patient number ${number}, ${name}`;
+                utterance.lang = 'en-US';
             }
             
-            // Start polling server every second
-            setInterval(updateDisplay, 1000);
-            updateDisplay(); // Initial call
+            window.speechSynthesis.speak(utterance);
         }
-
-        // Start the application
-        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

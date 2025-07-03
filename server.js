@@ -1,141 +1,152 @@
-// server.js  (aligned with front‑end routes)
-
 const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
-const app     = express();
+const cors = require('cors');
+const path = require('path');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// ───────────────────────────────────── config
-const PORT      = process.env.PORT || 3000;
-const NODE_ENV  = process.env.NODE_ENV || 'development';
-const corsOpts  = {
-  origin: [
-    'https://your-render-app.onrender.com',
-    'http://localhost:3000'
-  ],
-  optionsSuccessStatus: 200
-};
+// CORS Configuration
+app.use(cors({
+  origin: ['https://medical-queue.onrender.com', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
+}));
 
-// ───────────────────────────────────── middleware
-app.use(cors(corsOpts));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ───────────────────────────────────── queue state
-let queue           = [];
+// Queue State
+let queue = [];
 let currentPosition = 0;
-let calledCustomer  = null;
-let previousPatients = [];
-const clinicName    = 'Dr Maher Mahmoud Clinics';
+let calledPatientId = null;
+const clinicName = "City Medical Center";
 
-function sortQueue () {
-  const lvl = { emergency:4, priority:3, elderly:2, normal:1 };
-  queue.sort((a,b)=>
-    lvl[b.priority]-lvl[a.priority] ||
-    new Date(a.timestamp)-new Date(b.timestamp)
-  );
-}
+// Helper Functions
+const sortQueue = () => {
+  const priorityValues = { emergency: 4, priority: 3, elderly: 2, normal: 1 };
+  queue.sort((a, b) => {
+    return priorityValues[b.priority] - priorityValues[a.priority] || 
+           new Date(a.timestamp) - new Date(b.timestamp);
+  });
+};
 
-// ───────────────────────────────────── helpers
-function validatePriority(p){
-  return ['emergency','priority','elderly','normal'].includes(p);
-}
-
-// ───────────────────────────────────── routes
-
-// GET queue state
-app.get('/api/queue', (req,res)=>{
-  res.json({ queue, currentPosition, calledCustomer, clinicName });
+// API Endpoints
+app.get('/api/queue', (req, res) => {
+  res.json({
+    queue,
+    currentPosition,
+    calledPatientId,
+    clinicName,
+    lastUpdated: new Date().toISOString()
+  });
 });
 
-// POST add patient
-app.post('/api/queue', (req,res)=>{
-  const { name, priority='normal', notes='' } = req.body;
-  if(!name) return res.status(400).json({ error:'Name required' });
-  if(!validatePriority(priority))
-    return res.status(400).json({ error:'Invalid priority' });
+app.post('/api/add', (req, res) => {
+  const { name, priority = 'normal', notes = '' } = req.body;
+  
+  if (!name) {
+    return res.status(400).json({ error: 'Patient name is required' });
+  }
 
   const newPatient = {
+    id: Date.now().toString(),
     name,
-    ticket:`P-${(queue.length+1).toString().padStart(3,'0')}`,
-    status:'waiting',
     priority,
     notes,
-    timestamp:new Date().toISOString(),
-    queueTime:new Date().toLocaleTimeString()
+    status: 'waiting',
+    timestamp: new Date().toISOString()
   };
-  queue.push(newPatient); sortQueue();
-  res.status(201).json({ message:'Patient added', patient:newPatient });
-});
 
-// PUT update patient
-app.put('/api/queue/:idx', (req,res)=>{
-  const idx = +req.params.idx;
-  if(idx<0||idx>=queue.length) return res.status(400).json({ error:'Bad index' });
-
-  const { name, priority, notes } = req.body;
-  if(!name) return res.status(400).json({ error:'Name required' });
-  if(priority && !validatePriority(priority))
-    return res.status(400).json({ error:'Invalid priority' });
-
-  queue[idx] = { ...queue[idx], name, priority:priority||queue[idx].priority, notes };
+  queue.push(newPatient);
   sortQueue();
-  res.json({ message:'Patient updated', patient:queue[idx] });
+  res.status(201).json(newPatient);
 });
 
-// DELETE patient
-app.delete('/api/queue/:idx', (req,res)=>{
-  const idx = +req.params.idx;
-  if(idx<0||idx>=queue.length) return res.status(400).json({ error:'Bad index' });
+app.post('/api/call', (req, res) => {
+  if (currentPosition >= queue.length) {
+    return res.status(400).json({ error: 'No patients to call' });
+  }
 
-  const removed = queue.splice(idx,1)[0];
-  if(idx<currentPosition) currentPosition--;
-  res.json({ message:'Patient removed', patient:removed });
+  calledPatientId = queue[currentPosition].id;
+  queue[currentPosition].status = 'serving';
+  res.json({ calledPatientId });
 });
 
-// POST call
-app.post('/api/queue/call', (req,res)=>{
-  if(!queue.length || currentPosition>=queue.length)
-    return res.status(400).json({ error:'No patients to call' });
+app.post('/api/next', (req, res) => {
+  if (currentPosition >= queue.length - 1) {
+    return res.status(400).json({ error: 'No more patients in queue' });
+  }
 
-  calledCustomer = queue[currentPosition].name;
-  queue[currentPosition].status='serving';
-  res.json({ message:`Called ${calledCustomer}`, calledCustomer });
+  if (calledPatientId) {
+    queue[currentPosition].status = 'completed';
+  }
+
+  currentPosition++;
+  calledPatientId = null;
+  res.json({ currentPosition });
 });
 
-// POST next
-app.post('/api/queue/next', (req,res)=>{
-  if(currentPosition >= queue.length-1)
-    return res.status(400).json({ error:'No next patient' });
+app.post('/api/previous', (req, res) => {
+  if (currentPosition <= 0) {
+    return res.status(400).json({ error: 'No previous patient' });
+  }
 
-  // log previous
-  previousPatients.push({ ...queue[currentPosition], served:new Date().toISOString() });
-  currentPosition++; calledCustomer=null;
-  res.json({ message:'Moved to next', currentPosition });
+  currentPosition--;
+  calledPatientId = queue[currentPosition].id;
+  queue[currentPosition].status = 'serving';
+  res.json({ currentPosition });
 });
 
-// POST previous
-app.post('/api/queue/previous', (req,res)=>{
-  if(!previousPatients.length)
-    return res.status(400).json({ error:'No previous patient' });
+app.post('/api/update/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, priority, notes } = req.body;
+  const index = queue.findIndex(p => p.id === id);
 
-  const last = previousPatients.pop();
-  currentPosition = queue.findIndex(p=>p.name===last.name);
-  if(currentPosition===-1) return res.status(400).json({ error:'Patient not found' });
+  if (index === -1) {
+    return res.status(404).json({ error: 'Patient not found' });
+  }
 
-  calledCustomer = last.name;
-  queue[currentPosition].status='serving';
-  res.json({ message:`Returned to ${calledCustomer}`, currentPosition });
+  queue[index] = {
+    ...queue[index],
+    name: name || queue[index].name,
+    priority: priority || queue[index].priority,
+    notes: notes || queue[index].notes
+  };
+
+  sortQueue();
+  res.json(queue[index]);
 });
 
-// POST clear
-app.post('/api/queue/clear', (req,res)=>{
-  queue=[]; currentPosition=0; calledCustomer=null; previousPatients=[];
-  res.json({ message:'Queue cleared' });
+app.delete('/api/remove/:id', (req, res) => {
+  const { id } = req.params;
+  const index = queue.findIndex(p => p.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Patient not found' });
+  }
+
+  const [removedPatient] = queue.splice(index, 1);
+  
+  if (index < currentPosition) {
+    currentPosition--;
+  }
+
+  res.json(removedPatient);
 });
 
-// Health
-app.get('/health',(req,res)=>res.json({ status:'OK', env:NODE_ENV, time:new Date().toISOString() }));
+app.post('/api/clear', (req, res) => {
+  queue = [];
+  currentPosition = 0;
+  calledPatientId = null;
+  res.json({ message: 'Queue cleared' });
+});
 
-// ───────────────────────────────────── start
-app.listen(PORT, ()=>console.log(`Server running on port ${PORT}`));
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    queueLength: queue.length,
+    version: '1.0.0'
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
