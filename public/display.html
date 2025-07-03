@@ -438,7 +438,6 @@
         const clinicNameDisplay = document.getElementById('clinicNameDisplay');
         const nowServingElement = document.getElementById('nowServing');
         const queueDisplay = document.getElementById('queueDisplay');
-        const completedDisplay = document.getElementById('completedDisplay');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const callModal = document.getElementById('callModal');
         const modalPatientNumber = document.getElementById('modalPatientNumber');
@@ -502,7 +501,6 @@
 
             updateNowServing(queue, currentPosition, calledPatientId);
             updateQueueList(queue, currentPosition, calledPatientId, queueChanged);
-            updateCompletedList(completedPatients);
         }
 
         function updateNowServing(queue, currentPosition, calledPatientId) {
@@ -580,39 +578,6 @@
             if (queueDisplay.children.length === 0) {
                 queueDisplay.innerHTML = '<div class="empty-queue"><p>No patients currently waiting</p></div>';
             }
-        }
-
-        function updateCompletedList(completedPatients) {
-            completedDisplay.innerHTML = '';
-
-            if (!completedPatients || completedPatients.length === 0) {
-                completedDisplay.innerHTML = '<div class="empty-queue"><p>No recently completed patients</p></div>';
-                return;
-            }
-
-            completedPatients.forEach(patient => {
-                const item = document.createElement('div');
-                item.className = `queue-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
-                
-                const completedTime = patient.completedAt 
-                    ? new Date(patient.completedAt).toLocaleTimeString() 
-                    : 'Just now';
-
-                const statusClass = patient.status === 'skipped' ? 'status-skipped' : 'status-serving';
-                const statusText = patient.status === 'skipped' ? 'SKIPPED' : 'COMPLETED';
-
-                item.innerHTML = `
-                    <div class="queue-number">${patient.patientNumber}</div>
-                    <div class="queue-details">
-                        <div class="queue-name">${patient.name}</div>
-                        <div class="queue-status-type">
-                            <span class="queue-status ${statusClass}">${statusText}</span>
-                            <div class="completed-time">${completedTime}</div>
-                        </div>
-                    </div>
-                `;
-                completedDisplay.appendChild(item);
-            });
         }
 
         function showCallModal(number, name) {
