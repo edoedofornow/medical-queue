@@ -175,6 +175,11 @@
             color: #388e3c;
         }
 
+        .status-skipped {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
         .priority-indicator {
             font-size: 0.7rem;
             padding: 2px 6px;
@@ -562,11 +567,17 @@
                     ? new Date(patient.completedAt).toLocaleTimeString() 
                     : 'Just now';
 
+                const statusClass = patient.status === 'skipped' ? 'status-skipped' : 'status-serving';
+                const statusText = patient.status === 'skipped' ? 'SKIPPED' : 'COMPLETED';
+
                 item.innerHTML = `
                     <div class="queue-number">${patient.patientNumber}</div>
                     <div class="queue-details">
                         <div class="queue-name">${patient.name}</div>
-                        <div class="completed-time">${completedTime}</div>
+                        <div class="queue-status-type">
+                            <span class="queue-status ${statusClass}">${statusText}</span>
+                            <div class="completed-time">${completedTime}</div>
+                        </div>
                     </div>
                 `;
                 completedDisplay.appendChild(item);

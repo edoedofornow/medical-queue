@@ -18,8 +18,8 @@ let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-const clinicName = "City Medical Center";
-const MAX_COMPLETED_PATIENTS = 20;
+const clinicName = "Dr Maher Mahmoud Clinics";
+const MAX_COMPLETED_PATIENTS = 2000;
 
 // Helper Functions
 const sortQueue = () => {
@@ -30,7 +30,7 @@ const sortQueue = () => {
   });
 };
 
-const addToCompleted = (patient) => {
+const addToCompleted = (patient, status = 'completed') => {
   const completedPatient = {
     id: patient.id,
     name: patient.name,
@@ -38,7 +38,8 @@ const addToCompleted = (patient) => {
     notes: patient.notes,
     timestamp: patient.timestamp,
     completedAt: new Date().toISOString(),
-    patientNumber: patient.patientNumber
+    patientNumber: patient.patientNumber,
+    status: status
   };
   
   completedPatients.unshift(completedPatient);
@@ -104,7 +105,10 @@ app.post('/api/next', (req, res) => {
 
   if (calledPatientId) {
     const completedPatient = queue[currentPosition];
-    addToCompleted(completedPatient);
+    addToCompleted(completedPatient, 'completed');
+  } else {
+    const skippedPatient = queue[currentPosition];
+    addToCompleted(skippedPatient, 'skipped');
   }
 
   queue.splice(currentPosition, 1);
@@ -195,12 +199,14 @@ app.post('/api/reorder', (req, res) => {
     return res.status(404).json({ error: 'Patient not found' });
   }
 
+  if (calledPatientId === patientId) {
+    return res.status(400).json({ error: 'Cannot reorder a patient currently being served' });
+  }
+
   const [patient] = queue.splice(oldIndex, 1);
   queue.splice(newPosition, 0, patient);
   
-  if (calledPatientId === patientId) {
-    currentPosition = newPosition;
-  } else if (oldIndex === currentPosition) {
+  if (oldIndex === currentPosition) {
     currentPosition = newPosition;
   } else if (oldIndex < currentPosition && newPosition >= currentPosition) {
     currentPosition--;
@@ -221,7 +227,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     queueLength: queue.length,
     completedPatients: completedPatients.length,
-    version: '1.2.0'
+    version: '16.7.54'
   });
 });
 
