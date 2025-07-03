@@ -18,8 +18,8 @@ let queue = [];
 let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-const clinicName = "Clinic 14";
-const MAX_COMPLETED_PATIENTS = 2000; // Limit completed patients history
+const clinicName = "City Medical Center";
+const MAX_COMPLETED_PATIENTS = 20;
 
 // Helper Functions
 const sortQueue = () => {
@@ -31,12 +31,18 @@ const sortQueue = () => {
 };
 
 const addToCompleted = (patient) => {
-  completedPatients.unshift({
-    ...patient,
+  // Create a copy of the patient without the status field
+  const completedPatient = {
+    id: patient.id,
+    name: patient.name,
+    priority: patient.priority,
+    notes: patient.notes,
+    timestamp: patient.timestamp,
     completedAt: new Date().toISOString()
-  });
+  };
   
-  // Limit the number of completed patients we keep
+  completedPatients.unshift(completedPatient);
+  
   if (completedPatients.length > MAX_COMPLETED_PATIENTS) {
     completedPatients.pop();
   }
@@ -49,13 +55,9 @@ app.get('/api/queue', (req, res) => {
     currentPosition,
     calledPatientId,
     clinicName,
+    completedPatients, // Include completed patients in the main endpoint
     lastUpdated: new Date().toISOString()
   });
-});
-
-// New endpoint for completed patients
-app.get('/api/completed', (req, res) => {
-  res.json(completedPatients);
 });
 
 app.post('/api/add', (req, res) => {
@@ -90,20 +92,26 @@ app.post('/api/call', (req, res) => {
 });
 
 app.post('/api/next', (req, res) => {
-  if (currentPosition >= queue.length - 1) {
+  if (currentPosition >= queue.length) {
     return res.status(400).json({ error: 'No more patients in queue' });
   }
 
   if (calledPatientId) {
-    // Add current patient to completed before moving to next
     const completedPatient = queue[currentPosition];
-    completedPatient.status = 'completed';
     addToCompleted(completedPatient);
   }
 
-  currentPosition++;
+  // Remove the completed patient from the queue
+  queue.splice(currentPosition, 1);
+  
+  // Don't increment position since we removed an item
   calledPatientId = null;
-  res.json({ currentPosition });
+  
+  res.json({ 
+    currentPosition,
+    queue,
+    completedPatients
+  });
 });
 
 app.post('/api/previous', (req, res) => {
@@ -135,7 +143,6 @@ app.post('/api/update/:id', (req, res) => {
 
   sortQueue();
   
-  // If we're updating the currently called patient, update the calledPatientId
   if (calledPatientId === id) {
     calledPatientId = queue[index].id;
   }
@@ -153,12 +160,10 @@ app.delete('/api/remove/:id', (req, res) => {
 
   const [removedPatient] = queue.splice(index, 1);
   
-  // Adjust current position if needed
   if (index < currentPosition) {
     currentPosition--;
   }
   
-  // If we removed the called patient, clear the calledPatientId
   if (calledPatientId === id) {
     calledPatientId = null;
   }
@@ -168,6 +173,7 @@ app.delete('/api/remove/:id', (req, res) => {
 
 app.post('/api/clear', (req, res) => {
   queue = [];
+  completedPatients = [];
   currentPosition = 0;
   calledPatientId = null;
   res.json({ message: 'Queue cleared' });
@@ -176,8 +182,7 @@ app.post('/api/clear', (req, res) => {
 app.post('/api/reorder', (req, res) => {
   const { patientId, newPosition } = req.body;
   
-  // Validate inputs
-  if (!patientId || newPosition === undefined || newPosition < 0) {
+  if (!patientId || newPosition === undefined || newPosition < 0 || newPosition >= queue.length) {
     return res.status(400).json({ error: 'Invalid reorder request' });
   }
 
@@ -186,24 +191,21 @@ app.post('/api/reorder', (req, res) => {
     return res.status(404).json({ error: 'Patient not found' });
   }
 
-  // Don't allow moving beyond array bounds
-  if (newPosition >= queue.length) {
-    return res.status(400).json({ error: 'Invalid new position' });
-  }
-
   // Get the patient and remove from old position
   const [patient] = queue.splice(oldIndex, 1);
   
   // Insert at new position
   queue.splice(newPosition, 0, patient);
   
-  // Update currentPosition if needed
-  if (oldIndex < currentPosition && newPosition >= currentPosition) {
+  // Update currentPosition based on the actual movement
+  if (calledPatientId === patientId) {
+    currentPosition = newPosition;
+  } else if (oldIndex === currentPosition) {
+    currentPosition = newPosition;
+  } else if (oldIndex < currentPosition && newPosition >= currentPosition) {
     currentPosition--;
   } else if (oldIndex > currentPosition && newPosition <= currentPosition) {
     currentPosition++;
-  } else if (oldIndex === currentPosition) {
-    currentPosition = newPosition;
   }
 
   res.json({
@@ -219,16 +221,14 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     queueLength: queue.length,
     completedPatients: completedPatients.length,
-    version: '1.1.0'
+    version: '1.2.0'
   });
 });
 
-// Serve the display page
 app.get('/display', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'display.html'));
 });
 
-// Serve the admin page
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });

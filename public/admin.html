@@ -258,12 +258,16 @@
             background-color: var(--warning-orange);
         }
 
+        /* Hide elderly priority indicator */
         .priority-elderly {
-            background-color: var(--elderly-gray);
+            display: none !important;
         }
 
-        .priority-normal {
-            background-color: var(--info-blue);
+        /* Elderly patient styling */
+        .queue-item.elderly > div > div:first-child,
+        .queue-item.elderly small,
+        .patient-badge.elderly .patient-name {
+            color: var(--elderly-gray);
         }
 
         .queue-controls {
@@ -379,27 +383,6 @@
             margin-top: 3px;
         }
 
-        @media (max-width: 768px) {
-            .controls {
-                grid-template-columns: 1fr 1fr;
-            }
-            
-            .input-group {
-                flex-direction: column;
-            }
-            
-            .input-group input,
-            .input-group select {
-                width: 100%;
-            }
-            
-            .patient-badge {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 5px;
-            }
-        }
-
         /* Drag and drop styles */
         .queue-item {
             cursor: grab;
@@ -423,10 +406,25 @@
             color: var(--dark-gray);
         }
 
-        .queue-controls {
-            display: flex;
-            gap: 5px;
-            margin-left: auto;
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .input-group input,
+            .input-group select {
+                width: 100%;
+            }
+            
+            .patient-badge {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
         }
     </style>
 </head>
@@ -445,7 +443,7 @@
         <div class="card">
             <h2>Current Status</h2>
             <div class="current-status">
-                <div class="patient-badge">
+                <div class="patient-badge" id="currentPatientBadge">
                     <div class="patient-number" id="currentPatientNumber">-</div>
                     <div class="patient-info">
                         <div class="patient-name" id="currentPatientName">No patient</div>
@@ -582,6 +580,7 @@
             completedPatientsList: document.getElementById('completedPatientsList'),
             currentPatientNumber: document.getElementById('currentPatientNumber'),
             currentPatientName: document.getElementById('currentPatientName'),
+            currentPatientBadge: document.getElementById('currentPatientBadge'),
             currentPatientStatus: document.getElementById('currentPatientStatus'),
             connectionStatus: document.getElementById('connection-status'),
             serverUrl: document.getElementById('server-url')
@@ -940,7 +939,7 @@
 
             currentState.queue.forEach((patient, index) => {
                 const queueItem = document.createElement('div');
-                queueItem.className = 'queue-item';
+                queueItem.className = `queue-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
                 queueItem.dataset.id = patient.id;
                 queueItem.draggable = true;
                 
@@ -948,14 +947,14 @@
                     queueItem.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
                 }
 
-                const priorityClass = `priority-${patient.priority}`;
-                const priorityText = patient.priority.toUpperCase();
+                const priorityClass = patient.priority === 'elderly' ? '' : `priority-${patient.priority}`;
+                const priorityText = patient.priority === 'elderly' ? '' : patient.priority.toUpperCase();
 
                 queueItem.innerHTML = `
                     <div class="drag-handle">☰</div>
                     <div class="queue-item-number">${index + 1}</div>
                     <div>
-                        <div>${patient.name} <span class="priority-indicator ${priorityClass}">${priorityText}</span></div>
+                        <div>${patient.name} ${priorityText ? `<span class="priority-indicator ${priorityClass}">${priorityText}</span>` : ''}</div>
                         ${patient.notes ? `<small>${patient.notes}</small>` : ''}
                     </div>
                     <div class="queue-controls">
@@ -994,7 +993,7 @@
 
             currentState.completed.forEach((patient, index) => {
                 const completedItem = document.createElement('div');
-                completedItem.className = 'queue-item';
+                completedItem.className = `queue-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
                 
                 const completedTime = patient.completedAt 
                     ? new Date(patient.completedAt).toLocaleTimeString() 
@@ -1141,6 +1140,13 @@
                 elements.currentPatientNumber.textContent = position;
                 elements.currentPatientName.textContent = currentPatient.name;
                 
+                // Add/remove elderly class from patient badge
+                if (currentPatient.priority === 'elderly') {
+                    elements.currentPatientBadge.classList.add('elderly');
+                } else {
+                    elements.currentPatientBadge.classList.remove('elderly');
+                }
+                
                 if (currentState.calledPatientId) {
                     elements.currentPatientStatus.textContent = 'SERVING';
                     elements.currentPatientStatus.className = 'status-tag tag-serving';
@@ -1153,6 +1159,7 @@
                 elements.currentPatientName.textContent = 'No patient';
                 elements.currentPatientStatus.textContent = 'WAITING';
                 elements.currentPatientStatus.className = 'status-tag tag-waiting';
+                elements.currentPatientBadge.classList.remove('elderly');
             }
         }
 

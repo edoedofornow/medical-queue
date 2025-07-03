@@ -191,8 +191,19 @@
             background-color: var(--warning-orange);
         }
 
+        /* Hide elderly priority indicator */
         .priority-elderly {
-            background-color: var(--elderly-gray);
+            display: none !important;
+        }
+
+        /* Elderly patient styling */
+        .queue-item.elderly .queue-name,
+        .queue-item.elderly .patient-notes {
+            color: var(--elderly-gray);
+        }
+
+        .current-patient-container.elderly .current-patient {
+            color: var(--elderly-gray);
         }
 
         .empty-queue {
@@ -457,17 +468,21 @@
                 const patientIndex = queue.findIndex(p => p.id === calledPatientId);
                 const patient = queue[patientIndex];
                 
-                nowServingElement.innerHTML = `
-                    <div class="current-patient-container">
-                        <div class="patient-number">${patientIndex + 1}</div>
-                        <div class="current-patient-info">
-                            <div class="current-patient">${patient.name}</div>
-                            <div class="patient-status-type">
-                                ${buildPriorityBadge(patient.priority)}
-                                <span class="queue-status status-serving">NOW ATTENDING</span>
-                            </div>
+                const patientContainer = document.createElement('div');
+                patientContainer.className = `current-patient-container ${patient.priority === 'elderly' ? 'elderly' : ''}`;
+                
+                patientContainer.innerHTML = `
+                    <div class="patient-number">${patientIndex + 1}</div>
+                    <div class="current-patient-info">
+                        <div class="current-patient">${patient.name}</div>
+                        <div class="patient-status-type">
+                            ${patient.priority === 'elderly' ? '' : buildPriorityBadge(patient.priority)}
+                            <span class="queue-status status-serving">NOW ATTENDING</span>
                         </div>
                     </div>`;
+                
+                nowServingElement.innerHTML = '';
+                nowServingElement.appendChild(patientContainer);
                 
                 // Announce if newly called
                 if (lastCalled !== calledPatientId) {
@@ -499,31 +514,23 @@
                 return;
             }
 
-            // Sort by priority
-            const priorityOrder = { emergency: 4, priority: 3, elderly: 2, normal: 1 };
-            const sortedQueue = [...queue].sort((a, b) => 
-                priorityOrder[b.priority] - priorityOrder[a.priority] || 
-                new Date(a.timestamp) - new Date(b.timestamp)
-            );
-
-            sortedQueue.forEach(patient => {
-                const originalPosition = queue.findIndex(p => p.id === patient.id) + 1;
-                
+            queue.forEach((patient, index) => {
                 // Skip served patients
-                if (originalPosition - 1 < currentPosition && !calledPatientId) return;
+                if (index < currentPosition && !calledPatientId) return;
                 if (patient.id === calledPatientId) return;
                 
-                const status = originalPosition === currentPosition + 1 ? 'NEXT' : 'WAITING';
-                const statusClass = originalPosition === currentPosition + 1 ? 'status-next' : 'status-waiting';
+                const status = index === currentPosition ? 'NEXT' : 'WAITING';
+                const statusClass = index === currentPosition ? 'status-next' : 'status-waiting';
                 
                 const queueItem = document.createElement('div');
-                queueItem.className = `queue-item ${patient.priority === 'elderly' ? 'elderly-text' : ''}`;
+                queueItem.className = `queue-item ${patient.priority === 'elderly' ? 'elderly' : ''}`;
+                
                 queueItem.innerHTML = `
-                    <div class="queue-number">${originalPosition}</div>
+                    <div class="queue-number">${index + 1}</div>
                     <div class="queue-details">
                         <div class="queue-name-type">
                             <div class="queue-name">${patient.name}</div>
-                            ${buildPriorityBadge(patient.priority)}
+                            ${patient.priority === 'elderly' ? '' : buildPriorityBadge(patient.priority)}
                         </div>
                         <div class="queue-status-type">
                             <span class="queue-status ${statusClass}">${status}</span>
@@ -540,12 +547,11 @@
         }
 
         function buildPriorityBadge(priority) {
-            if (!priority || priority === 'normal') return '';
+            if (!priority || priority === 'normal' || priority === 'elderly') return '';
             
             const classMap = {
                 emergency: 'priority-emergency',
-                priority: 'priority-priority',
-                elderly: 'priority-elderly'
+                priority: 'priority-priority'
             };
             
             const cls = classMap[priority] || '';
