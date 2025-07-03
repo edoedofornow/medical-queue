@@ -1054,7 +1054,7 @@
           
             if (filterDate) {
               patientsToShow = patientsToShow.filter(p => {
-                const completedDate = new Date(p.completedAt).toLocaleDateString('en-CA'); // e.g., "2025-07-03"
+                const completedDate = new Date(p.completedAt).toLocaleDateString('en-CA'); // same format as input[type="date"] // e.g., "2025-07-03"
                 return completedDate === filterDate;
               });
             }

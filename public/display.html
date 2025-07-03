@@ -401,14 +401,6 @@
                 </div>
             </div>
         </div>
-        <div class="completed-container">
-            <h2>Recently Completed</h2>
-            <div class="completed-list" id="completedDisplay">
-                <div class="empty-queue">
-                    <p>No recently completed patients</p>
-                </div>
-            </div>
-        </div>
     </div>
 
     <button class="fullscreen-btn" id="fullscreenBtn">⛶</button>
@@ -628,14 +620,15 @@
             modalPatientName.textContent = name;
             callModal.style.display = 'flex';
         
-            // Play bell sound once, then announce after it finishes
+            // Reset and play bell sound
             bellSound.currentTime = 0;
             bellSound.play();
         
+            // When bell finishes, THEN speak
             bellSound.onended = () => {
                 announcePatient(number, name);
             };
-        }                  
+        }                        
 
         function buildPriorityBadge(priority) {
             if (!priority || priority === 'normal' || priority === 'elderly') return '';
