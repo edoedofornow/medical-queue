@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Queue Admin Panel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;700&display=swap">
+<style>
+  :root{
+    --primary-blue:#1a237e;--accent-blue:#303f9f;--light-blue:#e8eaf6;
+    --white:#fff;--gray:#f5f5f5;--success:#4caf50;--warn:#ff9800;--error:#f44336;
+  }
+  *{box-sizing:border-box;padding:0;margin:0;font-family:'Segoe UI',Tahoma,sans-serif}
+  body{background:var(--white);color:#333;line-height:1.5}
+  .header{background:var(--primary-blue);color:#fff;padding:18px 24px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+  .header h1{font-size:1.6rem}
+  .container{max-width:1200px;margin:24px auto;padding:0 20px}
+  .card{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:24px;margin-bottom:20px}
+  .card h2{color:var(--primary-blue);margin-bottom:14px;border-bottom:2px solid var(--light-blue);padding-bottom:8px}
+  .status-tag{display:inline-block;padding:4px 10px;border-radius:18px;font-size:.8rem;font-weight:700;color:#fff}
+  .tag-serving{background:var(--success)} .tag-waiting{background:var(--warn)}
+  .btn{padding:12px 20px;border:none;border-radius:6px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center}
+  .btn-primary{background:var(--accent-blue);color:#fff}
+  .btn-success{background:var(--success);color:#fff}
+  .btn-warning{background:var(--warn);color:#fff}
+  .btn-danger{background:var(--error);color:#fff}
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:28px}
+  .input-group{display:flex;gap:10px;flex-wrap:wrap}
+  .input-group input,.input-group select{flex:1 1 150px;padding:11px 14px;border:1px solid #ddd;border-radius:6px;font-size:1rem}
+  .notes-input{width:100%;margin-top:10px;padding:11px;border:1px solid #ddd;border-radius:6px;resize:vertical}
+  .alert{display:none;padding:14px;border-radius:6px;margin-bottom:20px}
+  .alert-success{background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9}
+  .alert-error{background:#ffebee;color:#c62828;border:1px solid #ffcdd2}
+  .queue-list{margin-top:12px}
+  .queue-item{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--light-blue)}
+  .queue-num{font-weight:700;min-width:42px;color:var(--primary-blue)}
+  .priority{font-size:.7rem;padding:2px 6px;border-radius:10px;color:#fff;margin-left:6px}
+  .emergency{background:var(--error)} .priority-p{background:var(--warn)} .elderly{background:#666} .normal{background:var(--accent-blue)}
+  .queue-controls{margin-left:auto;display:flex;gap:6px}
+  .queue-controls button{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--accent-blue)}
+  .queue-controls .remove{color:var(--error)}
+  @media(max-width:768px){.controls{grid-template-columns:1fr 1fr}.input-group{flex-direction:column}}
+</style>
+</head>
+<body>
+  <div class="header"><h1>Patient Queue – Admin</h1></div>
+  <div class="container">
+    <div id="alert" class="alert"></div>
+
+    <!-- Current status -->
+    <div class="card">
+      <h2>Current Status</h2>
+      <div id="currentStatus">
+        <p>Loading...</p>
+      </div>
+      <div class="controls">
+        <button id="callBtn" class="btn btn-primary">📢 Call Patient</button>
+        <button id="nextBtn" class="btn btn-success">⏭️ Next Patient</button>
+        <button id="prevBtn" class="btn btn-warning">⏮️ Previous</button>
+        <button id="clearBtn" class="btn btn-danger">🗑️ Clear Queue</button>
+      </div>
+    </div>
+
+    <!-- Add patient -->
+    <div class="card">
+      <h2>Add New Patient</h2>
+      <div class="input-group">
+        <input type="text" id="patientName" placeholder="Patient name" />
+        <select id="priority">
+          <option value="emergency">Emergency</option>
+          <option value="priority">Priority</option>
+          <option value="elderly">Elderly</option>
+          <option value="normal" selected>Normal</option>
+        </select>
+        <button id="addBtn" class="btn btn-primary">Add</button>
+      </div>
+      <textarea id="notes" rows="2" class="notes-input" placeholder="Notes (optional)"></textarea>
+    </div>
+
+    <!-- Queue -->
+    <div class="card">
+      <h2>Patient Queue</h2>
+      <div id="queueList" class="queue-list"></div>
+    </div>
+  </div>
+
+<script>
+const API = '/api/queue';
+const alertBox = document.getElementById('alert');
+let state = {queue:[],currentPosition:0,calledCustomer:null};
+
+function showAlert(msg,type='success'){
+  alertBox.textContent = msg;
+  alertBox.className = `alert alert-${type}`;
+  alertBox.style.display = 'block';
+  setTimeout(()=>alertBox.style.display='none',3000);
+}
+
+async function fetchState(){
+  const res = await fetch(API);
+  state = await res.json();
+  render();
+}
+
+function priorityBadge(p){
+  const map={emergency:'emergency',priority:'priority-p',elderly:'elderly',normal:'normal'};
+  const txt=p.toUpperCase();
+  return `<span class="priority ${map[p]}">${txt}</span>`;
+}
+
+function render(){
+  /* current status */
+  const currDiv=document.getElementById('currentStatus');
+  const {queue,currentPosition,calledCustomer}=state;
+  if(!queue.length){
+    currDiv.innerHTML='<p>No patients.</p>';
+  }else{
+    let displayTxt='',tag='';
+    if(calledCustomer){
+      const idx=queue.findIndex(p=>p.name===calledCustomer);
+      displayTxt=`<strong>#${idx+1} – ${calledCustomer}</strong>`;
+      tag='<span class="status-tag tag-serving">SERVING</span>';
+    }else{
+      const next = queue[currentPosition];
+      displayTxt=`<strong>#${currentPosition+1} – ${next.name}</strong>`;
+      tag='<span class="status-tag tag-waiting">NEXT</span>';
+    }
+    currDiv.innerHTML=displayTxt+' '+tag;
+  }
+
+  /* queue list */
+  const list=document.getElementById('queueList');
+  list.innerHTML='';
+  if(!queue.length){
+    list.innerHTML='<p>No patients in queue.</p>';return;
+  }
+  queue.forEach((p,i)=>{
+    const li=document.createElement('div');li.className='queue-item';
+    li.innerHTML=`
+      <div class="queue-num">${i+1}</div>
+      <div>${p.name} ${priorityBadge(p.priority)}${p.notes?`<br><small>${p.notes}</small>`:''}</div>
+      <div class="queue-controls">
+        <button data-edit="${i}">✏️</button>
+        <button class="remove" data-del="${i}">✕</button>
+      </div>`;
+    list.appendChild(li);
+  });
+}
+
+/* API helpers */
+async function addPatient(){
+  const name = document.getElementById('patientName').value.trim();
+  if(!name){showAlert('Enter patient name','error');return;}
+  const body={
+    name,
+    priority:document.getElementById('priority').value,
+    notes:document.getElementById('notes').value.trim(),
+    status:'waiting'
+  };
+  await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  document.getElementById('patientName').value='';
+  document.getElementById('notes').value='';
+  await fetchState();
+}
+async function callPatient(){await fetch(API+'/call',{method:'POST'});await fetchState();}
+async function nextPatient(){await fetch(API+'/next',{method:'POST'});await fetchState();}
+async function prevPatient(){await fetch(API+'/previous',{method:'POST'});await fetchState();}
+async function clearQueue(){
+  if(!confirm('Clear entire queue?'))return;
+  await fetch(API+'/clear',{method:'POST'});await fetchState();
+}
+async function deletePatient(i){
+  await fetch(API+'/'+i,{method:'DELETE'});
+  await fetchState();
+}
+async function editPatient(i){
+  const p=state.queue[i];
+  const name=prompt('Patient name:',p.name);
+  if(name===null)return;
+  const priority=prompt('Priority (emergency|priority|elderly|normal):',p.priority);
+  if(priority===null)return;
+  const notes=prompt('Notes:',p.notes||'');
+  const body={...p,name,priority,notes};
+  await fetch(API+'/'+i,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  await fetchState();
+}
+
+/* events */
+document.getElementById('addBtn').onclick=addPatient;
+document.getElementById('callBtn').onclick=callPatient;
+document.getElementById('nextBtn').onclick=nextPatient;
+document.getElementById('prevBtn').onclick=prevPatient;
+document.getElementById('clearBtn').onclick=clearQueue;
+document.getElementById('queueList').addEventListener('click',e=>{
+  if(e.target.dataset.del)deletePatient(e.target.dataset.del);
+  if(e.target.dataset.edit)editPatient(e.target.dataset.edit);
+});
+
+/* poll state every 2 s to stay fresh */
+setInterval(fetchState,2000);
+fetchState();
+</script>
+</body>
+</html>

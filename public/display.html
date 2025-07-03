@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Queue Display</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;700&display=swap">
+<style>
+  :root{
+    --primary-blue:#1a237e;--accent-blue:#303f9f;--light-blue:#e8eaf6;--white:#fff;
+    --success:#4caf50;--warn:#ff9800;--error:#f44336;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--white);color:#333;overflow:hidden}
+  .header{background:var(--primary-blue);color:#fff;text-align:center;padding:14px 0;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+  h1{font-size:1.5rem;margin:0}
+  .main{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 60px)}
+  .left{background:var(--light-blue);padding:20px;border-right:2px solid var(--accent-blue);display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .right{padding:20px;overflow-y:auto}
+  .current-num{font-size:3.5rem;font-weight:700;color:var(--accent-blue)}
+  .current-name{font-size:2rem;font-weight:700;color:var(--primary-blue)}
+  .tag{display:inline-block;padding:4px 10px;border-radius:12px;font-size:.8rem;font-weight:700;color:#fff;margin-left:6px}
+  .serving{background:var(--success)} .next{background:var(--warn)}
+  .queue-item{display:flex;align-items:center;border:1px solid var(--light-blue);border-radius:6px;padding:8px 12px;margin-bottom:8px}
+  .num{font-weight:700;color:var(--primary-blue);min-width:32px;text-align:center}
+  .name{font-weight:700;margin-right:6px}
+  .note{font-size:.8rem;color:#666}
+  .prio{font-size:.7rem;padding:2px 6px;border-radius:10px;color:#fff;margin-left:6px}
+  .prio.emergency{background:var(--error)}
+  .prio.priority{background:var(--warn)}
+  .prio.elderly{background:#666}
+  @media(max-width:768px){.main{grid-template-columns:1fr}.left{border-right:none;border-bottom:2px solid var(--accent-blue)}}
+</style>
+</head>
+<body>
+  <div class="header"><h1>Queue Display</h1></div>
+  <div class="main">
+    <section class="left">
+      <div id="now">
+        <p>Loading...</p>
+      </div>
+    </section>
+    <section class="right">
+      <h2 style="color:var(--primary-blue);margin-bottom:10px">Waiting List</h2>
+      <div id="list"></div>
+    </section>
+  </div>
+
+<audio id="bell" src="https://assets.mixkit.co/active_storage/sfx/1569/1569-preview.mp3" preload="auto"></audio>
+
+<script>
+const API='/api/queue';
+let lastCalled=null;
+
+function badge(priority){
+  if(!priority||priority==='normal')return'';
+  const cls={emergency:'emergency',priority:'priority',elderly:'elderly'}[priority];
+  const txt=priority.toUpperCase();
+  return `<span class="prio ${cls}">${txt}</span>`;
+}
+
+function render(state){
+  const {queue,currentPosition,calledCustomer}=state;
+  /* now serving */
+  const now=document.getElementById('now');
+  if(!queue.length){
+    now.innerHTML='<p>No patients.</p>';
+  }else if(calledCustomer){
+    const idx=queue.findIndex(p=>p.name===calledCustomer);
+    now.innerHTML=`
+      <div class="current-num">#${idx+1}</div>
+      <div class="current-name">${calledCustomer}</div>
+      <span class="tag serving">NOW ATTENDING</span>
+    `;
+    if(lastCalled!==calledCustomer){announce(idx+1,calledCustomer);lastCalled=calledCustomer;}
+  }else{
+    const next=queue[currentPosition];
+    now.innerHTML=`
+      <div class="current-name">Please wait</div>
+      <span class="tag next">NEXT</span>
+    `;
+  }
+
+  /* list */
+  const list=document.getElementById('list');list.innerHTML='';
+  if(!queue.length){list.innerHTML='<p>No waiting patients.</p>';return;}
+  queue.forEach((p,i)=>{
+    if(calledCustomer&&p.name===calledCustomer)return; /* skip showing current in list */
+    const div=document.createElement('div');div.className='queue-item';
+    div.innerHTML=`
+      <div class="num">${i+1}</div>
+      <div style="flex:1">
+        <span class="name">${p.name}</span>${badge(p.priority)}
+        ${p.notes?`<div class="note">${p.notes}</div>`:''}
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function announce(num,name){
+  document.getElementById('bell').play();
+  document.getElementById('bell').onended=()=>{
+    if(!('speechSynthesis'in window))return;
+    const utter=new SpeechSynthesisUtterance();
+    const hasAr=/[\u0600-\u06FF]/.test(name);
+    if(hasAr){
+      utter.text=`الرقم ${num}، ${name}`;
+      utter.lang='ar-SA';
+    }else{
+      utter.text=`Patient number ${num}, ${name}`;
+      utter.lang='en-US';
+    }
+    window.speechSynthesis.speak(utter);
+  };
+}
+
+async function poll(){
+  const res=await fetch(API);
+  const state=await res.json();
+  render(state);
+}
+setInterval(poll,2000);poll();
+</script>
+</body>
+</html>
