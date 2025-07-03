@@ -537,7 +537,6 @@
                     if (lastCalled !== calledPatientId) {
                         lastCalled = calledPatientId;
                         showCallModal(patient.patientNumber, patient.name);
-                        announcePatient(patient.patientNumber, patient.name);
                     }
                 }
             } else if (queue.length > 0 && currentPosition < queue.length) {

@@ -518,7 +518,7 @@
             <button class="btn btn-warning" id="clearFilterBtn">❌ Clear</button>
             <button class="btn btn-success" id="downloadCSVBtn">⬇️ CSV</button> <!-- NEW -->
           </div>
-          
+
     </div>
 
     <!-- Edit Patient Modal -->
@@ -1054,7 +1054,7 @@
           
             if (filterDate) {
               patientsToShow = patientsToShow.filter(p => {
-                const completedDate = new Date(p.completedAt).toISOString().slice(0, 10);
+                const completedDate = new Date(p.completedAt).toLocaleDateString('en-CA'); // e.g., "2025-07-03"
                 return completedDate === filterDate;
               });
             }

@@ -1,0 +1,8 @@
+{
+    "queue": [],
+    "completedPatients": [],
+    "currentPosition": 0,
+    "calledPatientId": null,
+    "historyStack": []
+  }
+  
