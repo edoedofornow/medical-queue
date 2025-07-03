@@ -227,6 +227,70 @@
             transform: scale(1.1);
         }
 
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal h2 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+        }
+
+        .modal-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--accent-blue);
+            margin: 15px 0;
+        }
+
+        .modal-patient {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-blue);
+            margin-bottom: 25px;
+        }
+
+        .close-modal {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .close-modal:hover {
+            background-color: var(--primary-blue);
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 grid-template-columns: 1fr;
@@ -283,6 +347,20 @@
 
     <button class="fullscreen-btn" id="fullscreenBtn">⛶</button>
 
+    <!-- Call Patient Modal -->
+    <div class="modal" id="callModal">
+        <div class="modal-content">
+            <h2>Patient Called</h2>
+            <div class="modal-number" id="modalPatientNumber">-</div>
+            <div class="modal-patient" id="modalPatientName">No patient</div>
+            <button class="close-modal" id="closeModal">Close</button>
+        </div>
+    </div>
+
+    <audio id="bellSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/1569/1569-preview.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         // Configuration
         const API_BASE = 'https://medical-queue.onrender.com/api';
@@ -302,10 +380,16 @@
         const nowServingElement = document.getElementById('nowServing');
         const queueDisplay = document.getElementById('queueDisplay');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const callModal = document.getElementById('callModal');
+        const modalPatientNumber = document.getElementById('modalPatientNumber');
+        const modalPatientName = document.getElementById('modalPatientName');
+        const closeModalBtn = document.getElementById('closeModal');
+        const bellSound = document.getElementById('bellSound');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             fullscreenBtn.addEventListener('click', toggleFullscreen);
+            closeModalBtn.addEventListener('click', () => callModal.style.display = 'none');
             fetchQueueData();
             setInterval(fetchQueueData, 1000); // Poll every second
         });
@@ -388,6 +472,7 @@
                 // Announce if newly called
                 if (lastCalled !== calledPatientId) {
                     lastCalled = calledPatientId;
+                    showCallModal(patientIndex + 1, patient.name);
                     announcePatient(patientIndex + 1, patient.name);
                 }
             } else if (queue.length > 0 && currentPosition < queue.length) {
@@ -395,6 +480,15 @@
             } else {
                 nowServingElement.innerHTML = '<div class="current-patient">Please wait...</div>';
             }
+        }
+
+        function showCallModal(number, name) {
+            modalPatientNumber.textContent = number;
+            modalPatientName.textContent = name;
+            callModal.style.display = 'flex';
+            
+            // Play bell sound
+            bellSound.play();
         }
 
         function updateQueueList(queue, currentPosition, calledPatientId) {

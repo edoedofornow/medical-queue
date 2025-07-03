@@ -15,9 +15,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Queue State
 let queue = [];
+let completedPatients = [];
 let currentPosition = 0;
 let calledPatientId = null;
-const clinicName = "City Medical Center";
+const clinicName = "Clinic 14";
+const MAX_COMPLETED_PATIENTS = 2000; // Limit completed patients history
 
 // Helper Functions
 const sortQueue = () => {
@@ -26,6 +28,18 @@ const sortQueue = () => {
     return priorityValues[b.priority] - priorityValues[a.priority] || 
            new Date(a.timestamp) - new Date(b.timestamp);
   });
+};
+
+const addToCompleted = (patient) => {
+  completedPatients.unshift({
+    ...patient,
+    completedAt: new Date().toISOString()
+  });
+  
+  // Limit the number of completed patients we keep
+  if (completedPatients.length > MAX_COMPLETED_PATIENTS) {
+    completedPatients.pop();
+  }
 };
 
 // API Endpoints
@@ -37,6 +51,11 @@ app.get('/api/queue', (req, res) => {
     clinicName,
     lastUpdated: new Date().toISOString()
   });
+});
+
+// New endpoint for completed patients
+app.get('/api/completed', (req, res) => {
+  res.json(completedPatients);
 });
 
 app.post('/api/add', (req, res) => {
@@ -76,7 +95,10 @@ app.post('/api/next', (req, res) => {
   }
 
   if (calledPatientId) {
-    queue[currentPosition].status = 'completed';
+    // Add current patient to completed before moving to next
+    const completedPatient = queue[currentPosition];
+    completedPatient.status = 'completed';
+    addToCompleted(completedPatient);
   }
 
   currentPosition++;
@@ -151,7 +173,6 @@ app.post('/api/clear', (req, res) => {
   res.json({ message: 'Queue cleared' });
 });
 
-// NEW ENDPOINT FOR REORDERING
 app.post('/api/reorder', (req, res) => {
   const { patientId, newPosition } = req.body;
   
@@ -197,8 +218,19 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     queueLength: queue.length,
-    version: '1.0.0'
+    completedPatients: completedPatients.length,
+    version: '1.1.0'
   });
+});
+
+// Serve the display page
+app.get('/display', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'display.html'));
+});
+
+// Serve the admin page
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 app.listen(PORT, () => {
