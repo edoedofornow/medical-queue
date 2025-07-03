@@ -612,30 +612,26 @@
         
             const utterance = new SpeechSynthesisUtterance();
             const isArabic = /[\u0600-\u06FF]/.test(name);
-            const lang = isArabic ? 'ar-SA' : 'en-US';
-        
-            utterance.text = isArabic ? `الرقم ${number}، ${name}` : `Patient number ${number}, ${name}`;
-            utterance.lang = lang;
-        
             const voices = speechSynthesis.getVoices();
         
-            // Try to pick a female-sounding voice
-            let selectedVoice = voices.find(v =>
-                v.lang === lang && /female|woman/i.test(v.name)
-            );
+            if (isArabic) {
+                utterance.text = `الرقم ${number}، ${name}`;
+                utterance.lang = 'ar-EG';
+                utterance.voice = voices.find(v => v.name === 'Microsoft Hoda - Arabic (Egypt)');
+            } else {
+                utterance.text = `Patient number ${number}, ${name}`;
+                utterance.lang = 'en-US';
         
-            // Fallback: pick any matching language voice
-            if (!selectedVoice) {
-                selectedVoice = voices.find(v => v.lang === lang);
-            }
+                // Find the 3rd matching English female voice
+                const englishVoices = voices.filter(v =>
+                    v.name.includes('Zira') || v.name.includes('Female') || v.name.includes('Hazel')
+                );
         
-            // Fallback: just use the first voice
-            if (!selectedVoice && voices.length > 0) {
-                selectedVoice = voices[0];
-            }
-        
-            if (selectedVoice) {
-                utterance.voice = selectedVoice;
+                if (englishVoices.length >= 3) {
+                    utterance.voice = englishVoices[2];
+                } else if (englishVoices.length > 0) {
+                    utterance.voice = englishVoices[0]; // fallback to first if less than 3
+                }
             }
         
             speechSynthesis.speak(utterance);
